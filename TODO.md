@@ -1,0 +1,5 @@
+- [x] Update mobile menu navigation links to use Link instead of href for proper React Router navigation
+- [x] Add conditional rendering in mobile menu based on user login status
+- [x] For logged-in users: Display user name/icon and options (Go to Dashboard, Logout)
+- [x] For non-logged-in users: Display Sign In and Sign Up options
+- [ ] Test mobile responsiveness and user menu functionality
