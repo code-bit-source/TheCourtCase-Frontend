@@ -11,6 +11,7 @@ import Features from "./pages/Features";
 import Download from "./pages/Download";
 import Premium from "./pages/Premium";
 import Resources from "./pages/Resources";
+import ProductivityGuideline from "./pages/ProductivityGuideline";
 import AdminHome from "@/admin/AdminHome";
 import AdvocateHome from "@/advocate/AdvocateHome";
 import ClientHome from "@/client/ClientHome";
@@ -43,6 +44,7 @@ function App() {
           <Route path="/download" element={<Download />} />
           <Route path="/premium" element={<Premium />} />
           <Route path="/resources" element={<Resources />} />
+          <Route path="/productivity-guideline" element={<ProductivityGuideline />} />
           <Route
             path="/admin"
             element={
