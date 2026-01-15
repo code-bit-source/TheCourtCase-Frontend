@@ -16,7 +16,7 @@ const Footer = ({ theme = 'light' }) => {
   };
 
   return (
-    <footer ref={ref} className={`${isDark ? 'bg-gray-900 border-t border-gray-800 text-gray-300' : 'bg-gradient-to-br from-blue-50/50 via-indigo-50/30 to-purple-50/50 border-t border-gray-200'}`}>
+    <footer ref={ref} className={`${isDark ? 'bg-black border-t border-gray-800 text-gray-300' : 'bg-gradient-to-br from-blue-50/50 via-indigo-50/30 to-purple-50/50 border-t border-gray-200'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {Object.entries(footerLinks).map(([category, links], categoryIdx) => (
