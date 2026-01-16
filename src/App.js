@@ -12,6 +12,7 @@ import Download from "./pages/Download";
 import Premium from "./pages/Premium";
 import Resources from "./pages/Resources";
 import ProductivityGuideline from "./pages/ProductivityGuideline";
+import About from "./pages/About";
 import AdminHome from "@/admin/AdminHome";
 import AdvocateHome from "@/advocate/AdvocateHome";
 import ClientHome from "@/client/ClientHome";
@@ -45,6 +46,8 @@ function App() {
           <Route path="/premium" element={<Premium />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/productivity-guideline" element={<ProductivityGuideline />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/admin-home" element={<AdminHome />} />
           <Route
             path="/admin"
             element={
@@ -53,14 +56,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/advocate"
-            element={
-              <ProtectedRoute allowedRoles={['advocate']}>
-                <AdvocateHome />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/client-home" element={<ClientHome />} />
           <Route
             path="/client"
             element={
@@ -69,11 +65,20 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/paralegal-home" element={<ParalegalHome />} />
           <Route
             path="/paralegal"
             element={
               <ProtectedRoute allowedRoles={['paralegal']}>
                 <ParalegalHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/advocate"
+            element={
+              <ProtectedRoute allowedRoles={['advocate']}>
+                <AdvocateHome />
               </ProtectedRoute>
             }
           />
