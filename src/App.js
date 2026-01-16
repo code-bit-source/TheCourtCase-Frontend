@@ -13,6 +13,7 @@ import Premium from "./pages/Premium";
 import Resources from "./pages/Resources";
 import ProductivityGuideline from "./pages/ProductivityGuideline";
 import About from "./pages/About";
+import FAQ from "./pages/F&Q";
 import AdminHome from "@/admin/AdminHome";
 import AdvocateHome from "@/advocate/AdvocateHome";
 import ClientHome from "@/client/ClientHome";
@@ -47,6 +48,7 @@ function App() {
           <Route path="/resources" element={<Resources />} />
           <Route path="/productivity-guideline" element={<ProductivityGuideline />} />
           <Route path="/about" element={<About />} />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="/admin-home" element={<AdminHome />} />
           <Route
             path="/admin"
