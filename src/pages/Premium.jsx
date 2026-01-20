@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 
@@ -104,7 +105,7 @@ const FeatureLimits = () => (
         <div className="w-full md:w-1/2 order-2 md:order-1">
           <h4 className="text-[28px] md:text-[32px] font-bold text-white mb-4 leading-[1.3]">Create more, achieve more</h4>
           <p className="text-[16px] text-[#A9A9A9] leading-[1.6] mb-6">Folder, List, Task, Check item - complex projects are handled as a breeze</p>
-          <a href="#" className="text-[#FF8D42] text-[16px] font-medium hover:text-[#FF7A21] transition-colors">Know More</a>
+          <Link to="/features" className="text-[#FF8D42] text-[16px] font-medium hover:text-[#FF7A21] transition-colors">Know More</Link>
         </div>
         <div className="w-full md:w-1/2 order-1 md:order-2 flex justify-center md:justify-end">
           <img

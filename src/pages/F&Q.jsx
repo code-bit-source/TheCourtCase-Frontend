@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const Sidebar = ({ currentPage, onPageChange }) => {
@@ -145,11 +146,11 @@ const BeginnersGuidePage = () => {
         <li>Can&apos;t handle a work email at the moment? Forward it to TickTick to make sure you don&apos;t forget.</li>
       </ul>
       <p className="text-[16px] leading-[1.7] text-[#4a4a4a] mb-4">You can quickly add tasks in many ways.</p>
-      <a href="#" className="text-[#6366f1] hover:text-[#4f46e5] inline-flex items-center gap-1 font-medium mb-8 transition-colors">👉 How to quickly add tasks</a>
+      <Link to="/help-center" className="text-[#6366f1] hover:text-[#4f46e5] inline-flex items-center gap-1 font-medium mb-8 transition-colors">👉 How to quickly add tasks</Link>
 
       <h3 className="text-[20px] font-semibold leading-[1.4] mt-10 mb-3 text-[#1a1a1a]">Never Miss a Reminder Again</h3>
       <p className="text-[16px] leading-[1.7] text-[#4a4a4a] mb-4">You can set multiple reminders for important tasks, such as your mother&apos;s birthday. Set a reminder three days in advance and another one on the day itself to make sure you don&apos;t miss it.</p>
-      <a href="#" className="text-[#6366f1] hover:text-[#4f46e5] inline-flex items-center gap-1 font-medium mb-8 transition-colors">👉 Effective Reminder feature</a>
+      <Link to="/help-center" className="text-[#6366f1] hover:text-[#4f46e5] inline-flex items-center gap-1 font-medium mb-8 transition-colors">👉 Effective Reminder feature</Link>
 
       <h3 className="text-[20px] font-semibold leading-[1.4] mt-10 mb-3 text-[#1a1a1a]">Use Repeat Feature to Save Brain Capacity</h3>
       <p className="text-[16px] leading-[1.7] text-[#4a4a4a] mb-4">We have many tasks that need to be done regularly, such as:</p>
@@ -158,7 +159,7 @@ const BeginnersGuidePage = () => {
         <li>Credit card payments</li>
         <li>Friend&apos;s birthday</li>
       </ul>
-      <p className="text-[16px] leading-[1.7] text-[#4a4a4a] mb-4">This is where the Repeat feature comes in handy. TickTick provides many time options for recurring tasks. <a href="#" className="text-[#6366f1] hover:text-[#4f46e5] font-medium transition-colors">👉 Powerful recurring tasks</a></p>
+      <p className="text-[16px] leading-[1.7] text-[#4a4a4a] mb-4">This is where the Repeat feature comes in handy. TickTick provides many time options for recurring tasks. <Link to="/help-center" className="text-[#6366f1] hover:text-[#4f46e5] font-medium transition-colors">👉 Powerful recurring tasks</Link></p>
 
       <h2 id="follow-ticktick" className="text-[24px] font-semibold leading-[1.3] mt-16 mb-4 text-[#1a1a1a]">Follow TickTick</h2>
       <p className="text-[16px] leading-[1.7] text-[#4a4a4a] mb-4">If you want to get more application updates and time management methods, you can follow us on social media.</p>

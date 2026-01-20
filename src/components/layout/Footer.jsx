@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Twitter, Facebook, Instagram, Linkedin } from 'lucide-react';
 import { motion, useInView } from 'framer-motion';
 
@@ -8,11 +9,30 @@ const Footer = ({ theme = 'light' }) => {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   const footerLinks = {
-    Product: ['Features', 'Premium', 'Pricing', 'Enterprise'],
-    Download: ['iOS', 'Android', 'macOS', 'Windows', 'Web'],
-    Resources: ['Help Center', 'Blog', 'Templates', 'Guide'],
-    Company: ['About', 'Careers', 'Contact', 'Press'],
-    Legal: ['Privacy', 'Terms', 'Security']
+    Product: [
+      { name: 'Features', path: '/features' },
+      { name: 'Enterprise', path: '/enterprise' },
+    ],
+    Download: [
+      { name: 'Download', path: '/download' },
+    ],
+    Resources: [
+      { name: 'Help Center', path: '/help-center' },
+      { name: 'Blog', path: '/blog' },
+      { name: 'Templates', path: '/templates' },
+      { name: 'Guide', path: '/guide' },
+    ],
+    Company: [
+      { name: 'About', path: '/about' },
+      { name: 'Careers', path: '/careers' },
+      { name: 'Contact', path: '/contact' },
+      { name: 'Press', path: '/press' },
+    ],
+    Legal: [
+      { name: 'Privacy', path: '/privacy' },
+      { name: 'Terms', path: '/terms' },
+      { name: 'Security', path: '/security' },
+    ]
   };
 
   return (
@@ -29,20 +49,24 @@ const Footer = ({ theme = 'light' }) => {
               <h3 className={`text-sm font-semibold uppercase mb-4 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{category}</h3>
               <ul className="space-y-3">
                 {links.map((link, linkIdx) => (
-                  <motion.li 
-                    key={link}
+                  <motion.li
+                    key={link.name}
                     initial={{ opacity: 0, x: -10 }}
                     animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
                     transition={{ duration: 0.3, delay: categoryIdx * 0.1 + linkIdx * 0.05 }}
                   >
-                    <motion.a 
-                      href="#" 
+                    <Link
+                      to={link.path}
                       className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors inline-block`}
-                      whileHover={{ x: 5, color: '#3b82f6' }}
-                      transition={{ type: "spring", stiffness: 300 }}
                     >
-                      {link}
-                    </motion.a>
+                      <motion.span
+                        whileHover={{ x: 5, color: '#3b82f6' }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                        className="inline-block"
+                      >
+                        {link.name}
+                      </motion.span>
+                    </Link>
                   </motion.li>
                 ))}
               </ul>
@@ -51,14 +75,14 @@ const Footer = ({ theme = 'light' }) => {
         </div>
 
         {/* Bottom Bar */}
-        <motion.div 
+        <motion.div
           className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center"
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <motion.div 
+            <motion.div
               className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center"
               whileHover={{ scale: 1.2, rotate: 360 }}
               transition={{ duration: 0.6 }}
@@ -73,14 +97,16 @@ const Footer = ({ theme = 'light' }) => {
           {/* Social Links */}
           <div className="flex items-center space-x-4">
             {[
-              { Icon: Twitter, color: '#1DA1F2' },
-              { Icon: Facebook, color: '#1877F2' },
-              { Icon: Instagram, color: '#E4405F' },
-              { Icon: Linkedin, color: '#0A66C2' }
-            ].map(({ Icon, color }, idx) => (
-              <motion.a 
+              { Icon: Twitter, color: '#1DA1F2', url: 'https://twitter.com/TickTick' },
+              { Icon: Facebook, color: '#1877F2', url: 'https://facebook.com/TickTickApp' },
+              { Icon: Instagram, color: '#E4405F', url: 'https://instagram.com/TickTickApp' },
+              { Icon: Linkedin, color: '#0A66C2', url: 'https://linkedin.com/company/ticktick' }
+            ].map(({ Icon, color, url }, idx) => (
+              <motion.a
                 key={idx}
-                href="#" 
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-blue-600'} transition-colors`}
                 whileHover={{ scale: 1.3, y: -3, color }}
                 whileTap={{ scale: 0.9 }}

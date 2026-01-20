@@ -81,9 +81,16 @@ const HeroSection = () => {
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {categories.map((category, index) => (
-              <a 
+              <Link 
                 key={index}
-                href="#"
+                to={
+                  category.title === "Beginner's Guide" ? "/guide" :
+                  category.title === "Best Practices" ? "/productivity-guideline" :
+                  category.title === "FAQ" ? "/faq" :
+                  category.title === "Design Principles" ? "/about" :
+                  category.title === "What's New" ? "/blog" :
+                  "/resources"
+                }
                 className="flex flex-col items-center bg-white border border-[#EEEEEE] rounded-[12px] p-6 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 group"
               >
                 <div className="relative w-full aspect-square max-w-[124px] mb-4">
@@ -96,7 +103,7 @@ const HeroSection = () => {
                 <p className="text-[16px] font-semibold text-center text-black">
                   {category.title}
                 </p>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -205,14 +212,14 @@ const FeatureGuideSection = () => {
 
               <div className="flex flex-col gap-0 border-t border-[#EEEEEE] pt-4 mt-auto">
                 {feature.links.map((link, linkIndex) => (
-                  <a
+                  <Link
                     key={linkIndex}
-                    href="#"
+                    to="/help-center"
                     className="group flex items-center justify-between py-[10px] text-[14px] text-[#666666] hover:text-[#6187F2] transition-colors duration-200"
                   >
                     <span className="line-clamp-1">{link}</span>
                     <ChevronDown className="w-4 h-4 text-[#CCCCCC] -rotate-90 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>

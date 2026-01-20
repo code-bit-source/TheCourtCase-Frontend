@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
@@ -113,8 +114,8 @@ const ArticleGrid = () => {
         </div>
         
         <div className="mt-16 flex justify-center">
-          <a 
-            href="#" 
+          <Link 
+            to="/blog" 
             className="text-[14px] font-medium text-[#5C5C5C] hover:text-[#5297ff] flex items-center gap-1 transition-colors"
           >
             More
@@ -130,7 +131,7 @@ const ArticleGrid = () => {
             >
               <path d="m9 18 6-6-6-6" />
             </svg>
-          </a>
+          </Link>
         </div>
       </div>
     </section>
