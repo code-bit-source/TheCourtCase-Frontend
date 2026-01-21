@@ -1,4 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  caseService,
+  taskService,
+  documentService,
+  timelineService,
+  activityService,
+  reminderService
+} from '../services';
 import {
   Scale, LayoutDashboard, FileText, MessageSquare,
   Calendar, Users, Bell, Clock, Upload,
@@ -34,7 +42,7 @@ export default function DashboardPage() {
   const [activeView, setActiveView] = useState('dashboard');
   const isDark = false;
   const accentColor = '#4772fa';
-  
+
   const colors = getThemeColors(isDark, accentColor);
   const [activeTab, setActiveTab] = useState('personal');
   const userRole = 'admin';
@@ -42,62 +50,357 @@ export default function DashboardPage() {
   const canViewFirmDashboard = ['admin', 'partner', 'advocate', 'paralegal'].includes(userRole);
   const canViewFinancials = ['admin', 'partner'].includes(userRole);
 
+  // State for data from API
+  const [loading, setLoading] = useState({
+    cases: false,
+    tasks: false,
+    documents: false,
+    hearings: false,
+    activities: false,
+    reminders: false
+  });
+  const [error, setError] = useState({
+    cases: null,
+    tasks: null,
+    documents: null,
+    hearings: null,
+    activities: null,
+    reminders: null
+  });
+
+  // State for data
+  const [cases, setCases] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [hearings, setHearings] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [caseStats, setCaseStats] = useState(null);
+  const [taskStats, setTaskStats] = useState(null);
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchCases = async () => {
+      setLoading(prev => ({ ...prev, cases: true }));
+      try {
+        const response = await caseService.getCases();
+        setCases(response.data || []);
+        setError(prev => ({ ...prev, cases: null }));
+      } catch (err) {
+        console.error('Error fetching cases:', err);
+        setError(prev => ({ ...prev, cases: 'Failed to load cases' }));
+      } finally {
+        setLoading(prev => ({ ...prev, cases: false }));
+      }
+    };
+
+    const fetchTasks = async () => {
+      setLoading(prev => ({ ...prev, tasks: true }));
+      try {
+        const response = await taskService.getTasks();
+        setTasks(response.data || []);
+        setError(prev => ({ ...prev, tasks: null }));
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        setError(prev => ({ ...prev, tasks: 'Failed to load tasks' }));
+      } finally {
+        setLoading(prev => ({ ...prev, tasks: false }));
+      }
+    };
+
+    const fetchDocuments = async () => {
+      setLoading(prev => ({ ...prev, documents: true }));
+      try {
+        const response = await documentService.getDocuments();
+        setDocuments(response.data || []);
+        setError(prev => ({ ...prev, documents: null }));
+      } catch (err) {
+        console.error('Error fetching documents:', err);
+        setError(prev => ({ ...prev, documents: 'Failed to load documents' }));
+      } finally {
+        setLoading(prev => ({ ...prev, documents: false }));
+      }
+    };
+
+    const fetchHearings = async () => {
+      setLoading(prev => ({ ...prev, hearings: true }));
+      try {
+        // Assuming we're getting hearings for all cases the user has access to
+        const response = await timelineService.getHearings('all');
+        setHearings(response.data || []);
+        setError(prev => ({ ...prev, hearings: null }));
+      } catch (err) {
+        console.error('Error fetching hearings:', err);
+        setError(prev => ({ ...prev, hearings: 'Failed to load hearings' }));
+      } finally {
+        setLoading(prev => ({ ...prev, hearings: false }));
+      }
+    };
+
+    const fetchActivities = async () => {
+      setLoading(prev => ({ ...prev, activities: true }));
+      try {
+        const response = await activityService.getRecentActivities();
+        setActivities(response.data || []);
+        setError(prev => ({ ...prev, activities: null }));
+      } catch (err) {
+        console.error('Error fetching activities:', err);
+        setError(prev => ({ ...prev, activities: 'Failed to load activities' }));
+      } finally {
+        setLoading(prev => ({ ...prev, activities: false }));
+      }
+    };
+
+    const fetchReminders = async () => {
+      setLoading(prev => ({ ...prev, reminders: true }));
+      try {
+        const response = await reminderService.getUpcomingReminders();
+        setReminders(response.data || []);
+        setError(prev => ({ ...prev, reminders: null }));
+      } catch (err) {
+        console.error('Error fetching reminders:', err);
+        setError(prev => ({ ...prev, reminders: 'Failed to load reminders' }));
+      } finally {
+        setLoading(prev => ({ ...prev, reminders: false }));
+      }
+    };
+
+    const fetchCaseStats = async () => {
+      try {
+        const response = await caseService.getCaseStats();
+        setCaseStats(response.data || null);
+      } catch (err) {
+        console.error('Error fetching case stats:', err);
+      }
+    };
+
+    const fetchTaskStats = async () => {
+      try {
+        const response = await taskService.getTaskStats();
+        setTaskStats(response.data || null);
+      } catch (err) {
+        console.error('Error fetching task stats:', err);
+      }
+    };
+
+    // Call all fetch functions
+    fetchCases();
+    fetchTasks();
+    fetchDocuments();
+    fetchHearings();
+    fetchActivities();
+    fetchReminders();
+    fetchCaseStats();
+    fetchTaskStats();
+  }, []);
+
+  // Prepare data for UI
   const personalStats = [
-    { label: 'My Cases', value: '8', icon: Briefcase, color: '#4772fa', desc: '3 active hearings', action: () => setActiveView('case-summary') },
-    { label: 'My Tasks', value: '12', icon: ListTodo, color: '#ff9500', desc: '5 due today', action: () => setActiveView('tasks') },
-    { label: 'My Hearings', value: '4', icon: Calendar, color: '#00c853', desc: 'Next: Mar 18', action: () => setActiveView('calendar') },
-    { label: 'My Documents', value: '24', icon: FileText, color: '#9c27b0', desc: '3 pending review', action: () => setActiveView('documents') }
+    {
+      label: 'My Cases',
+      value: loading.cases ? '...' : (cases.length || '0'),
+      icon: Briefcase,
+      color: '#4772fa',
+      desc: caseStats ? `${caseStats.activeHearings || 0} active hearings` : 'Loading...',
+      action: () => setActiveView('case-summary')
+    },
+    {
+      label: 'My Tasks',
+      value: loading.tasks ? '...' : (tasks.length || '0'),
+      icon: ListTodo,
+      color: '#ff9500',
+      desc: taskStats ? `${taskStats.dueToday || 0} due today` : 'Loading...',
+      action: () => setActiveView('tasks')
+    },
+    {
+      label: 'My Hearings',
+      value: loading.hearings ? '...' : (hearings.length || '0'),
+      icon: Calendar,
+      color: '#00c853',
+      desc: hearings.length > 0 ? `Next: ${new Date(hearings[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'None scheduled',
+      action: () => setActiveView('calendar')
+    },
+    {
+      label: 'My Documents',
+      value: loading.documents ? '...' : (documents.length || '0'),
+      icon: FileText,
+      color: '#9c27b0',
+      desc: documents.filter(d => d.status === 'pending_review').length + ' pending review',
+      action: () => setActiveView('documents')
+    }
   ];
 
+  // Use case stats for firm stats if available, otherwise use hardcoded data
   const firmStats = [
-    { label: 'Total Cases', value: '147', icon: Briefcase, color: '#4772fa', desc: '23 active this month' },
-    { label: 'Firm Hearings', value: '28', icon: Calendar, color: '#00c853', desc: 'This week' },
-    { label: 'Team Members', value: '18', icon: Users, color: '#9c27b0', desc: '12 advocates, 6 staff' },
-    { label: canViewFinancials ? 'Revenue' : 'Pending Tasks', value: canViewFinancials ? '$284K' : '89', icon: canViewFinancials ? CreditCard : ListTodo, color: '#ff9500', desc: canViewFinancials ? 'This month' : 'Across firm' }
+    {
+      label: 'Total Cases',
+      value: caseStats ? caseStats.totalCases : '...',
+      icon: Briefcase,
+      color: '#4772fa',
+      desc: caseStats ? `${caseStats.activeThisMonth} active this month` : 'Loading...'
+    },
+    {
+      label: 'Firm Hearings',
+      value: caseStats ? caseStats.totalHearings : '...',
+      icon: Calendar,
+      color: '#00c853',
+      desc: 'This week'
+    },
+    {
+      label: 'Team Members',
+      value: caseStats ? caseStats.teamMembers : '...',
+      icon: Users,
+      color: '#9c27b0',
+      desc: caseStats ? `${caseStats.advocates} advocates, ${caseStats.staff} staff` : 'Loading...'
+    },
+    {
+      label: canViewFinancials ? 'Revenue' : 'Pending Tasks',
+      value: canViewFinancials ? (caseStats ? `$${caseStats.revenue / 1000}K` : '...') : (taskStats ? taskStats.pendingTasks : '...'),
+      icon: canViewFinancials ? CreditCard : ListTodo,
+      color: '#ff9500',
+      desc: canViewFinancials ? 'This month' : 'Across firm'
+    }
   ];
 
-  const myUpdates = [
-    { icon: Calendar, color: '#4772fa', title: 'Hearing Scheduled', desc: 'Thompson vs. Global Corp - Final Arguments', time: '2 days ago' },
-    { icon: FileText, color: '#00c853', title: 'Document Uploaded', desc: 'Evidence_Ex_A.docx uploaded successfully', time: '5 days ago' },
-    { icon: Gavel, color: '#9c27b0', title: 'Court Order Received', desc: 'Interim stay granted on Case #WP/2024/102', time: '1 week ago' },
-    { icon: Bell, color: '#ff9500', title: 'Deadline Reminder', desc: 'Counter-affidavit due in 3 days', time: '1 week ago' }
-  ];
+  // Map activities to myUpdates format
+  const myUpdates = activities.slice(0, 4).map(activity => {
+    let icon, color;
+    switch (activity.type) {
+      case 'hearing':
+        icon = Calendar;
+        color = '#4772fa';
+        break;
+      case 'document':
+        icon = FileText;
+        color = '#00c853';
+        break;
+      case 'order':
+        icon = Gavel;
+        color = '#9c27b0';
+        break;
+      case 'reminder':
+        icon = Bell;
+        color = '#ff9500';
+        break;
+      default:
+        icon = FileText;
+        color = '#4772fa';
+    }
 
-  const firmActivity = [
-    { icon: Briefcase, color: '#4772fa', title: 'New Case Filed', desc: 'Miller vs. Tech Corp assigned to Sarah J.', time: '1 hour ago', user: 'System' },
-    { icon: FileText, color: '#00c853', title: 'Document Submitted', desc: 'Evidence bundle for Case #441 uploaded', time: '3 hours ago', user: 'David Chen' },
-    { icon: Calendar, color: '#ff9500', title: 'Hearing Completed', desc: 'Johnson Estate hearing concluded', time: '5 hours ago', user: 'Michael Brown' },
-    { icon: CreditCard, color: '#9c27b0', title: 'Payment Received', desc: '$12,500 from Global Industries', time: 'Yesterday', user: 'Finance' },
-    { icon: Users, color: '#4772fa', title: 'Team Update', desc: 'New paralegal Emily W. joined the firm', time: '2 days ago', user: 'HR' }
-  ];
+    return {
+      icon,
+      color,
+      title: activity.title,
+      desc: activity.description,
+      time: activity.createdAt // Format this as needed
+    };
+  });
 
-  const myTasks = [
-    { id: 1, title: 'Review counter-affidavit draft', priority: 3, dueDate: 'Today', case: 'Thompson vs. Global' },
-    { id: 2, title: 'Prepare evidence summary', priority: 2, dueDate: 'Tomorrow', case: 'Miller vs. Tech' },
-    { id: 3, title: 'Client meeting preparation', priority: 2, dueDate: 'Mar 20', case: 'Johnson Estate' },
-    { id: 4, title: 'File motion for extension', priority: 1, dueDate: 'Mar 22', case: 'Smith Litigation' }
-  ];
+  // If no activities yet, use hardcoded data
+  // if (myUpdates.length === 0) {
+  //   myUpdates.push(
+  //     { icon: Calendar, color: '#4772fa', title: 'Hearing Scheduled', desc: 'Thompson vs. Global Corp - Final Arguments', time: '2 days ago' },
+  //     { icon: FileText, color: '#00c853', title: 'Document Uploaded', desc: 'Evidence_Ex_A.docx uploaded successfully', time: '5 days ago' },
+  //     { icon: Gavel, color: '#9c27b0', title: 'Court Order Received', desc: 'Interim stay granted on Case #WP/2024/102', time: '1 week ago' },
+  //     { icon: Bell, color: '#ff9500', title: 'Deadline Reminder', desc: 'Counter-affidavit due in 3 days', time: '1 week ago' }
+  //   );
+  // }
 
-  const myHearings = [
-    { date: 'Mar 18', time: '10:30 AM', case: 'Thompson vs. Global Corp', court: 'High Court, Room 302', type: 'Final Arguments' },
-    { date: 'Mar 22', time: '2:00 PM', case: 'Miller vs. Tech Solutions', court: 'District Court, Room 105', type: 'Preliminary Hearing' },
-    { date: 'Mar 25', time: '11:00 AM', case: 'Johnson Estate Matter', court: 'Probate Court, Room 201', type: 'Status Conference' }
-  ];
+  // Map firm activities (using the same activities for now)
+  const firmActivity = activities.slice(0, 5).map(activity => {
+    let icon, color;
+    switch (activity.type) {
+      case 'case':
+        icon = Briefcase;
+        color = '#4772fa';
+        break;
+      case 'document':
+        icon = FileText;
+        color = '#00c853';
+        break;
+      case 'hearing':
+        icon = Calendar;
+        color = '#ff9500';
+        break;
+      case 'payment':
+        icon = CreditCard;
+        color = '#9c27b0';
+        break;
+      case 'team':
+        icon = Users;
+        color = '#4772fa';
+        break;
+      default:
+        icon = FileText;
+        color = '#4772fa';
+    }
 
-  const caseDistribution = [
+    return {
+      icon,
+      color,
+      title: activity.title,
+      desc: activity.description,
+      time: activity.createdAt, // Format this as needed
+      user: activity.user?.name || 'System'
+    };
+  });
+
+  // If no firm activities yet, use hardcoded data
+  // if (firmActivity.length === 0) {
+  //   firmActivity.push(
+  //     { icon: Briefcase, color: '#4772fa', title: 'New Case Filed', desc: 'Miller vs. Tech Corp assigned to Sarah J.', time: '1 hour ago', user: 'System' },
+  //     { icon: FileText, color: '#00c853', title: 'Document Submitted', desc: 'Evidence bundle for Case #441 uploaded', time: '3 hours ago', user: 'David Chen' },
+  //     { icon: Calendar, color: '#ff9500', title: 'Hearing Completed', desc: 'Johnson Estate hearing concluded', time: '5 hours ago', user: 'Michael Brown' },
+  //     { icon: CreditCard, color: '#9c27b0', title: 'Payment Received', desc: '$12,500 from Global Industries', time: 'Yesterday', user: 'Finance' },
+  //     { icon: Users, color: '#4772fa', title: 'Team Update', desc: 'New paralegal Emily W. joined the firm', time: '2 days ago', user: 'HR' }
+  //   );
+  // }
+
+  // Map tasks
+  const myTasks = tasks.slice(0, 4).map(task => ({
+    id: task.id,
+    title: task.title,
+    priority: task.priority,
+    dueDate: new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    case: task.case?.name || 'Unknown Case'
+  }));
+
+  // If no tasks yet, use hardcoded data
+  // if (myTasks.length === 0) {
+  //   myTasks.push(
+  //     { id: 1, title: 'Review counter-affidavit draft', priority: 3, dueDate: 'Today', case: 'Thompson vs. Global' },
+  //     { id: 2, title: 'Prepare evidence summary', priority: 2, dueDate: 'Tomorrow', case: 'Miller vs. Tech' },
+  //     { id: 3, title: 'Client meeting preparation', priority: 2, dueDate: 'Mar 20', case: 'Johnson Estate' },
+  //     { id: 4, title: 'File motion for extension', priority: 1, dueDate: 'Mar 22', case: 'Smith Litigation' }
+  //   );
+  // }
+
+  // Map hearings
+  const myHearings = hearings.slice(0, 3).map(hearing => ({
+    date: new Date(hearing.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    time: new Date(hearing.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }),
+    case: hearing.case?.name || 'Unknown Case',
+    court: hearing.location || 'Court Location Not Specified',
+    type: hearing.type || 'Hearing'
+  }));
+
+  // If no hearings yet, use hardcoded data
+  // if (myHearings.length === 0) {
+  //   myHearings.push(
+  //     { date: 'Mar 18', time: '10:30 AM', case: 'Thompson vs. Global Corp', court: 'High Court, Room 302', type: 'Final Arguments' },
+  //     { date: 'Mar 22', time: '2:00 PM', case: 'Miller vs. Tech Solutions', court: 'District Court, Room 105', type: 'Preliminary Hearing' },
+  //     { date: 'Mar 25', time: '11:00 AM', case: 'Johnson Estate Matter', court: 'Probate Court, Room 201', type: 'Status Conference' }
+  //   );
+  // }
+
+  // Use case stats for case distribution if available, otherwise use hardcoded data
+  const caseDistribution = caseStats?.distribution || [
     { stage: 'Filing', count: 12, color: '#4772fa', percent: 8 },
     { stage: 'Discovery', count: 28, color: '#00c853', percent: 19 },
     { stage: 'Pre-Trial', count: 35, color: '#ff9500', percent: 24 },
     { stage: 'Trial', count: 18, color: '#eb4d3d', percent: 12 },
     { stage: 'Appeal', count: 8, color: '#9c27b0', percent: 5 },
     { stage: 'Closed', count: 46, color: '#808080', percent: 32 }
-  ];
-
-  const advocateWorkload = [
-    { name: 'Sarah Jenkins', cases: 18, tasks: 24, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop' },
-    { name: 'Michael Brown', cases: 15, tasks: 19, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop' },
-    { name: 'Emily Watson', cases: 12, tasks: 16, avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop' },
-    { name: 'James Lee', cases: 14, tasks: 21, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop' }
   ];
 
   const getPriorityColor = (p) => p === 3 ? '#eb4d3d' : p === 2 ? '#ff9500' : '#4772fa';
@@ -172,114 +475,297 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {personalStats.map((item) => <StatCard key={item.label} item={item} onClick={item.action} />)}
-      </div>
+      <div className="stats-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 overflow-x-hidden">
+  {personalStats.map((item) => (
+    <StatCard
+      key={item.label}
+      item={item}
+      onClick={item.action}
+    />
+  ))}
+</div>
 
-      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-        <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: colors.text }}>My Pending Tasks</span>
-            <button onClick={() => setActiveView('tasks')} style={{ fontSize: 13, color: accentColor, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>View All</button>
+
+     <div className="dashboard-grid grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 overflow-x-hidden">
+  
+  {/* My Pending Tasks Card */}
+  <div className="rounded-xl border" style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+    
+    <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: colors.border }}>
+      <span className="text-[15px] font-semibold" style={{ color: colors.text }}>
+        My Pending Tasks
+      </span>
+      <button
+        onClick={() => setActiveView('tasks')}
+        className="text-[13px] font-medium"
+        style={{ color: accentColor }}
+      >
+        View All
+      </button>
+    </div>
+
+    <div className="p-4">
+      {myTasks.map((task, i) => (
+        <div
+          key={task.id}
+          className="flex items-center gap-3 py-3"
+          style={{ borderBottom: i < myTasks.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}
+        >
+          <div
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: getPriorityColor(task.priority) }}
+          />
+
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-sm truncate"
+              style={{ color: colors.text }}
+            >
+              {task.title}
+            </p>
+            <p
+              className="text-xs mt-[2px]"
+              style={{ color: colors.textSecondary }}
+            >
+              {task.case}
+            </p>
           </div>
-          <div style={{ padding: 16 }}>
-            {myTasks.map((task, i) => (
-              <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: i < myTasks.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: getPriorityColor(task.priority), flexShrink: 0 }}></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, color: colors.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
-                  <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>{task.case}</p>
-                </div>
-                <span style={{ fontSize: 12, color: task.dueDate === 'Today' ? '#eb4d3d' : colors.textSecondary, fontWeight: 500, flexShrink: 0 }}>{task.dueDate}</span>
-              </div>
-            ))}
-          </div>
+
+          <span
+            className="text-xs font-medium flex-shrink-0"
+            style={{ color: task.dueDate === 'Today' ? '#eb4d3d' : colors.textSecondary }}
+          >
+            {task.dueDate}
+          </span>
         </div>
+      ))}
+    </div>
+  </div>
 
-        <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: colors.text }}>My Upcoming Hearings</span>
-            <button onClick={() => setActiveView('calendar')} style={{ fontSize: 13, color: accentColor, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>View All</button>
-          </div>
-          <div style={{ padding: 16 }}>
-            {myHearings.map((hearing, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: i < myHearings.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: colors.accentLight, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, color: accentColor, fontWeight: 600 }}>{hearing.date.split(' ')[0]}</span>
-                  <span style={{ fontSize: 14, color: accentColor, fontWeight: 700 }}>{hearing.date.split(' ')[1]}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hearing.case}</p>
-                  <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>{hearing.court}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, backgroundColor: colors.bgTertiary, color: colors.textSecondary }}>{hearing.type}</span>
-                    <span style={{ fontSize: 11, color: colors.textSecondary }}>{hearing.time}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+  {/* My Upcoming Hearings Card */}
+  <div className="rounded-xl border" style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+    
+    <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: colors.border }}>
+      <span className="text-[15px] font-semibold" style={{ color: colors.text }}>
+        My Upcoming Hearings
+      </span>
+      <button
+        onClick={() => setActiveView('calendar')}
+        className="text-[13px] font-medium"
+        style={{ color: accentColor }}
+      >
+        View All
+      </button>
+    </div>
 
-      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
-        <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: colors.text }}>My Recent Activity</span>
-            <button onClick={() => setActiveView('timeline')} style={{ fontSize: 13, color: accentColor, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>View All</button>
+    <div className="p-4">
+      {myHearings.map((hearing, i) => (
+        <div
+          key={i}
+          className="flex items-start gap-3 py-3"
+          style={{ borderBottom: i < myHearings.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}
+        >
+          <div
+            className="w-12 h-12 rounded-lg flex flex-col items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: colors.accentLight }}
+          >
+            <span className="text-[11px] font-semibold" style={{ color: accentColor }}>
+              {hearing.date.split(' ')[0]}
+            </span>
+            <span className="text-sm font-bold" style={{ color: accentColor }}>
+              {hearing.date.split(' ')[1]}
+            </span>
           </div>
-          <div style={{ padding: 16 }}>
-            {myUpdates.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < myUpdates.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: `${item.color}${isDark ? '30' : '10'}`, color: item.color }}>
-                  <item.icon size={16} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <p style={{ fontWeight: 500, fontSize: 14, color: colors.text, margin: 0 }}>{item.title}</p>
-                    <span style={{ fontSize: 11, color: colors.textMuted, flexShrink: 0 }}>{item.time}</span>
-                  </div>
-                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <span style={{ fontWeight: 600, color: colors.text, fontSize: 15 }}>Quick Actions</span>
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={() => setActiveView('tasks')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', backgroundColor: accentColor, color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none' }}>
-                <Plus size={18} /> Add Task
-              </button>
-              <button onClick={() => setActiveView('documents')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', backgroundColor: colors.bgTertiary, color: colors.text, borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none' }}>
-                <Upload size={18} /> Upload Document
-              </button>
-              <button onClick={() => setActiveView('messages')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', backgroundColor: colors.bgTertiary, color: colors.text, borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none' }}>
-                <MessageSquare size={18} /> Send Message
-              </button>
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-sm font-medium truncate"
+              style={{ color: colors.text }}
+            >
+              {hearing.case}
+            </p>
+            <p
+              className="text-xs mt-[2px]"
+              style={{ color: colors.textSecondary }}
+            >
+              {hearing.court}
+            </p>
+
+            <div className="flex items-center gap-2 mt-1">
+              <span
+                className="text-[11px] px-2 py-[2px] rounded"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textSecondary }}
+              >
+                {hearing.type}
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: colors.textSecondary }}
+              >
+                {hearing.time}
+              </span>
             </div>
           </div>
+        </div>
+      ))}
+    </div>
+  </div>
 
-          <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <Bell size={18} style={{ color: '#ff9500' }} />
-              <span style={{ fontWeight: 600, color: colors.text, fontSize: 15 }}>Reminders</span>
+</div>
+
+
+     <div className="dashboard-grid grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 overflow-x-hidden">
+
+  {/* Left: My Recent Activity */}
+  <div
+    className="rounded-xl border"
+    style={{ backgroundColor: colors.card, borderColor: colors.border }}
+  >
+    <div
+      className="px-5 py-4 border-b flex items-center justify-between"
+      style={{ borderColor: colors.border }}
+    >
+      <span className="text-[15px] font-semibold" style={{ color: colors.text }}>
+        My Recent Activity
+      </span>
+      <button
+        onClick={() => setActiveView('timeline')}
+        className="text-[13px] font-medium"
+        style={{ color: accentColor }}
+      >
+        View All
+      </button>
+    </div>
+
+    <div className="p-4">
+      {myUpdates.map((item, i) => (
+        <div
+          key={i}
+          className="flex gap-3 py-3"
+          style={{ borderBottom: i < myUpdates.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}
+        >
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{
+              backgroundColor: `${item.color}${isDark ? '30' : '10'}`,
+              color: item.color
+            }}
+          >
+            <item.icon size={16} />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start gap-2">
+              <p className="text-sm font-medium" style={{ color: colors.text }}>
+                {item.title}
+              </p>
+              <span
+                className="text-[11px] flex-shrink-0"
+                style={{ color: colors.textMuted }}
+              >
+                {item.time}
+              </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ padding: 12, backgroundColor: isDark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.08)', borderRadius: 8, borderLeft: '3px solid #ff9500' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0 }}>Counter-affidavit deadline</p>
-                <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Due in 3 days • Thompson Case</p>
-              </div>
-              <div style={{ padding: 12, backgroundColor: isDark ? `${accentColor}20` : `${accentColor}10`, borderRadius: 8, borderLeft: `3px solid ${accentColor}` }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0 }}>Client meeting</p>
-                <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Tomorrow at 2:00 PM</p>
-              </div>
-            </div>
+
+            <p
+              className="text-[13px] mt-[2px] truncate"
+              style={{ color: colors.textSecondary }}
+            >
+              {item.desc}
+            </p>
           </div>
         </div>
+      ))}
+    </div>
+  </div>
+
+  {/* Right Column */}
+  <div className="flex flex-col gap-4">
+
+    {/* Quick Actions */}
+    <div
+      className="rounded-xl border p-5"
+      style={{ backgroundColor: colors.card, borderColor: colors.border }}
+    >
+      <span className="text-[15px] font-semibold" style={{ color: colors.text }}>
+        Quick Actions
+      </span>
+
+      <div className="mt-4 flex flex-col gap-3">
+        <button
+          onClick={() => setActiveView('tasks')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold"
+          style={{ backgroundColor: accentColor, color: '#fff' }}
+        >
+          <Plus size={18} /> Add Task
+        </button>
+
+        <button
+          onClick={() => setActiveView('documents')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold"
+          style={{ backgroundColor: colors.bgTertiary, color: colors.text }}
+        >
+          <Upload size={18} /> Upload Document
+        </button>
+
+        <button
+          onClick={() => setActiveView('messages')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold"
+          style={{ backgroundColor: colors.bgTertiary, color: colors.text }}
+        >
+          <MessageSquare size={18} /> Send Message
+        </button>
       </div>
+    </div>
+
+    {/* Reminders */}
+    <div
+      className="rounded-xl border p-5"
+      style={{ backgroundColor: colors.card, borderColor: colors.border }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <Bell size={18} className="text-[#ff9500]" />
+        <span className="text-[15px] font-semibold" style={{ color: colors.text }}>
+          Reminders
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div
+          className="p-3 rounded-lg border-l-4"
+          style={{
+            backgroundColor: isDark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.08)',
+            borderLeftColor: '#ff9500'
+          }}
+        >
+          <p className="text-[13px] font-medium" style={{ color: colors.text }}>
+            Counter-affidavit deadline
+          </p>
+          <p className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Due in 3 days • Thompson Case
+          </p>
+        </div>
+
+        <div
+          className="p-3 rounded-lg border-l-4"
+          style={{
+            backgroundColor: isDark ? `${accentColor}20` : `${accentColor}10`,
+            borderLeftColor: accentColor
+          }}
+        >
+          <p className="text-[13px] font-medium" style={{ color: colors.text }}>
+            Client meeting
+          </p>
+          <p className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Tomorrow at 2:00 PM
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
     </>
   );
 
@@ -289,7 +775,7 @@ export default function DashboardPage() {
         {firmStats.map((item) => <StatCard key={item.label} item={item} />)}
       </div>
 
-      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+      {/* <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
         <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}` }}>
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: colors.text }}>Case Distribution by Stage</span>
@@ -319,8 +805,8 @@ export default function DashboardPage() {
             <span style={{ fontSize: 15, fontWeight: 600, color: colors.text }}>Advocate Workload</span>
           </div>
           <div style={{ padding: 16 }}>
-            {advocateWorkload.map((adv, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < advocateWorkload.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}>
+            {firmActivity.map((adv, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < firmActivity.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}>
                 <img src={adv.avatar} alt={adv.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{adv.name}</p>
@@ -336,103 +822,259 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
 
-      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
-        <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: colors.text }}>Firm Activity Timeline</span>
-          </div>
-          <div style={{ padding: 16 }}>
-            {firmActivity.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < firmActivity.length - 1 ? `1px solid ${colors.borderLight}` : 'none' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: `${item.color}${isDark ? '30' : '10'}`, color: item.color }}>
-                  <item.icon size={16} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <p style={{ fontWeight: 500, fontSize: 14, color: colors.text, margin: 0 }}>{item.title}</p>
-                    <span style={{ fontSize: 11, color: colors.textMuted, flexShrink: 0 }}>{item.time}</span>
-                  </div>
-                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: '2px 0 0 0' }}>{item.desc}</p>
-                  <span style={{ fontSize: 11, color: colors.textMuted }}>by {item.user}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-6">
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {canViewFinancials && (
-            <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <CreditCard size={18} style={{ color: '#00c853' }} />
-                <span style={{ fontWeight: 600, color: colors.text, fontSize: 15 }}>Financial Summary</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${colors.borderLight}` }}>
-                  <span style={{ fontSize: 13, color: colors.textSecondary }}>Monthly Revenue</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#00c853' }}>$284,500</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${colors.borderLight}` }}>
-                  <span style={{ fontSize: 13, color: colors.textSecondary }}>Outstanding</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#ff9500' }}>$47,200</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0' }}>
-                  <span style={{ fontSize: 13, color: colors.textSecondary }}>Collected (MTD)</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: accentColor }}>$198,300</span>
-                </div>
-              </div>
-            </div>
-          )}
+  {/* LEFT: Firm Activity Timeline */}
+  <div
+    className="rounded-xl border"
+    style={{ backgroundColor: colors.card, borderColor: colors.border }}
+  >
+    <div
+      className="px-5 py-4 border-b"
+      style={{ borderColor: colors.border }}
+    >
+      <span className="text-[15px] font-semibold" style={{ color: colors.text }}>
+        Firm Activity Timeline
+      </span>
+    </div>
 
-          <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <AlertTriangle size={18} style={{ color: '#eb4d3d' }} />
-              <span style={{ fontWeight: 600, color: colors.text, fontSize: 15 }}>Urgent Deadlines</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ padding: 12, backgroundColor: isDark ? 'rgba(235,77,61,0.15)' : 'rgba(235,77,61,0.08)', borderRadius: 8, borderLeft: '3px solid #eb4d3d' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0 }}>Filing deadline - Miller Case</p>
-                <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Due today • Assigned: Sarah J.</p>
-              </div>
-              <div style={{ padding: 12, backgroundColor: isDark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.08)', borderRadius: 8, borderLeft: '3px solid #ff9500' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0 }}>Response due - Johnson Estate</p>
-                <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Due in 2 days • Assigned: Michael B.</p>
-              </div>
-              <div style={{ padding: 12, backgroundColor: isDark ? `${accentColor}20` : `${accentColor}10`, borderRadius: 8, borderLeft: `3px solid ${accentColor}` }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0 }}>Court appearance - Tech Corp</p>
-                <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Mar 18 at 10:30 AM</p>
-              </div>
-            </div>
+    <div className="p-4">
+      {firmActivity.map((item, i) => (
+        <div
+          key={i}
+          className={`flex gap-3 py-3 ${
+            i < firmActivity.length - 1 ? "border-b" : ""
+          }`}
+          style={{ borderColor: colors.borderLight }}
+        >
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+            style={{
+              backgroundColor: `${item.color}${isDark ? "30" : "10"}`,
+              color: item.color,
+            }}
+          >
+            <item.icon size={16} />
           </div>
 
-          <div style={{ backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <BarChart3 size={18} style={{ color: '#9c27b0' }} />
-              <span style={{ fontWeight: 600, color: colors.text, fontSize: 15 }}>Quick Stats</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start gap-2">
+              <p
+                className="font-medium text-sm truncate"
+                style={{ color: colors.text }}
+              >
+                {item.title}
+              </p>
+              <span
+                className="text-[11px] shrink-0"
+                style={{ color: colors.textMuted }}
+              >
+                {item.time}
+              </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ textAlign: 'center', padding: 12, backgroundColor: isDark ? `${accentColor}20` : '#f5f7ff', borderRadius: 8 }}>
-                <p style={{ fontSize: 20, fontWeight: 700, color: accentColor, margin: 0 }}>23</p>
-                <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>New this month</p>
-              </div>
-              <div style={{ textAlign: 'center', padding: 12, backgroundColor: isDark ? 'rgba(0,200,83,0.15)' : '#f0fff4', borderRadius: 8 }}>
-                <p style={{ fontSize: 20, fontWeight: 700, color: '#00c853', margin: 0 }}>12</p>
-                <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>Closed MTD</p>
-              </div>
-              <div style={{ textAlign: 'center', padding: 12, backgroundColor: isDark ? 'rgba(255,149,0,0.15)' : '#fff8f0', borderRadius: 8 }}>
-                <p style={{ fontSize: 20, fontWeight: 700, color: '#ff9500', margin: 0 }}>89%</p>
-                <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>On-time rate</p>
-              </div>
-              <div style={{ textAlign: 'center', padding: 12, backgroundColor: isDark ? 'rgba(156,39,176,0.15)' : '#fdf0ff', borderRadius: 8 }}>
-                <p style={{ fontSize: 20, fontWeight: 700, color: '#9c27b0', margin: 0 }}>4.8</p>
-                <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>Client rating</p>
-              </div>
-            </div>
+
+            <p
+              className="text-[13px] mt-[2px]"
+              style={{ color: colors.textSecondary }}
+            >
+              {item.desc}
+            </p>
+
+            <span
+              className="text-[11px]"
+              style={{ color: colors.textMuted }}
+            >
+              by {item.user}
+            </span>
           </div>
         </div>
+      ))}
+    </div>
+  </div>
+
+  {/* RIGHT COLUMN */}
+  <div className="flex flex-col gap-4">
+
+    {/* Financial Summary */}
+    {canViewFinancials && (
+      <div
+        className="rounded-xl border p-5"
+        style={{ backgroundColor: colors.card, borderColor: colors.border }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard size={18} className="text-green-500" />
+          <span
+            className="font-semibold text-[15px]"
+            style={{ color: colors.text }}
+          >
+            Financial Summary
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div
+            className="flex justify-between py-2 border-b text-sm"
+            style={{ borderColor: colors.borderLight }}
+          >
+            <span style={{ color: colors.textSecondary }}>
+              Monthly Revenue
+            </span>
+            <span className="font-semibold text-green-500">
+              $284,500
+            </span>
+          </div>
+
+          <div
+            className="flex justify-between py-2 border-b text-sm"
+            style={{ borderColor: colors.borderLight }}
+          >
+            <span style={{ color: colors.textSecondary }}>
+              Outstanding
+            </span>
+            <span className="font-semibold text-orange-500">
+              $47,200
+            </span>
+          </div>
+
+          <div className="flex justify-between py-2 text-sm">
+            <span style={{ color: colors.textSecondary }}>
+              Collected (MTD)
+            </span>
+            <span className="font-semibold" style={{ color: accentColor }}>
+              $198,300
+            </span>
+          </div>
+        </div>
       </div>
+    )}
+
+    {/* Urgent Deadlines */}
+    <div
+      className="rounded-xl border p-5"
+      style={{ backgroundColor: colors.card, borderColor: colors.border }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <AlertTriangle size={18} className="text-red-500" />
+        <span
+          className="font-semibold text-[15px]"
+          style={{ color: colors.text }}
+        >
+          Urgent Deadlines
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+
+        <div
+          className="p-3 rounded-lg border-l-[3px]"
+          style={{
+            backgroundColor: isDark ? "rgba(235,77,61,0.15)" : "rgba(235,77,61,0.08)",
+            borderLeftColor: "#eb4d3d",
+          }}
+        >
+          <p className="text-[13px] font-medium" style={{ color: colors.text }}>
+            Filing deadline - Miller Case
+          </p>
+          <p className="text-[12px] mt-1" style={{ color: colors.textSecondary }}>
+            Due today • Assigned: Sarah J.
+          </p>
+        </div>
+
+        <div
+          className="p-3 rounded-lg border-l-[3px]"
+          style={{
+            backgroundColor: isDark ? "rgba(255,149,0,0.15)" : "rgba(255,149,0,0.08)",
+            borderLeftColor: "#ff9500",
+          }}
+        >
+          <p className="text-[13px] font-medium" style={{ color: colors.text }}>
+            Response due - Johnson Estate
+          </p>
+          <p className="text-[12px] mt-1" style={{ color: colors.textSecondary }}>
+            Due in 2 days • Assigned: Michael B.
+          </p>
+        </div>
+
+        <div
+          className="p-3 rounded-lg border-l-[3px]"
+          style={{
+            backgroundColor: isDark ? `${accentColor}20` : `${accentColor}10`,
+            borderLeftColor: accentColor,
+          }}
+        >
+          <p className="text-[13px] font-medium" style={{ color: colors.text }}>
+            Court appearance - Tech Corp
+          </p>
+          <p className="text-[12px] mt-1" style={{ color: colors.textSecondary }}>
+            Mar 18 at 10:30 AM
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Quick Stats */}
+    <div
+      className="rounded-xl border p-5"
+      style={{ backgroundColor: colors.card, borderColor: colors.border }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <BarChart3 size={18} className="text-purple-500" />
+        <span
+          className="font-semibold text-[15px]"
+          style={{ color: colors.text }}
+        >
+          Quick Stats
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div
+          className="text-center p-3 rounded-lg"
+          style={{ backgroundColor: isDark ? `${accentColor}20` : "#f5f7ff" }}
+        >
+          <p className="text-xl font-bold" style={{ color: accentColor }}>23</p>
+          <p className="text-[11px]" style={{ color: colors.textSecondary }}>
+            New this month
+          </p>
+        </div>
+
+        <div
+          className="text-center p-3 rounded-lg"
+          style={{ backgroundColor: isDark ? "rgba(0,200,83,0.15)" : "#f0fff4" }}
+        >
+          <p className="text-xl font-bold text-green-500">12</p>
+          <p className="text-[11px]" style={{ color: colors.textSecondary }}>
+            Closed MTD
+          </p>
+        </div>
+
+        <div
+          className="text-center p-3 rounded-lg"
+          style={{ backgroundColor: isDark ? "rgba(255,149,0,0.15)" : "#fff8f0" }}
+        >
+          <p className="text-xl font-bold text-orange-500">89%</p>
+          <p className="text-[11px]" style={{ color: colors.textSecondary }}>
+            On-time rate
+          </p>
+        </div>
+
+        <div
+          className="text-center p-3 rounded-lg"
+          style={{ backgroundColor: isDark ? "rgba(156,39,176,0.15)" : "#fdf0ff" }}
+        >
+          <p className="text-xl font-bold text-purple-600">4.8</p>
+          <p className="text-[11px]" style={{ color: colors.textSecondary }}>
+            Client rating
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
     </>
   );
 
@@ -453,3 +1095,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

@@ -4,8 +4,9 @@ import {
   RefreshCw, Crown, Shield, Info, Moon, Sun, Monitor,
   Palette, Globe, Trash2, Camera, CheckCircle2, AlertCircle,
   CreditCard, Database, Zap, FileText, Link as LinkIcon, Star,
-  X, Menu
+  X, Menu, Lock, Eye, EyeOff, Key
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const getThemeColors = (isDark, accentColor) => ({
   bg: isDark ? '#0f0f1a' : '#ffffff',
@@ -30,11 +31,13 @@ const getThemeColors = (isDark, accentColor) => ({
   inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
 });
 
-export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAccentColor, addNotification, onClose }) {
+export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAccentColor, addNotification, onClose, userInfo = {} }) {
   const colors = getThemeColors(isDark, accentColor);
+  const { user, setPassword: authSetPassword, changePassword, openSetPasswordModal } = useAuth();
+  
   const [activeTab, setActiveTab] = useState('account');
-  const [displayName, setDisplayName] = useState('Alex Thompson');
-  const [email, setEmail] = useState('alex.thompson@email.com');
+  const [displayName, setDisplayName] = useState(userInfo.name || user?.name || 'Alex Thompson');
+  const [email, setEmail] = useState(userInfo.email || user?.email || 'alex.thompson@email.com');
   const [language, setLanguage] = useState('English');
   const [dateFormat, setDateFormat] = useState('MM/DD/YYYY');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -43,6 +46,21 @@ export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAc
   const [autoBackup, setAutoBackup] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  
+  // Password modal states
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -105,6 +123,81 @@ export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAc
     addNotification('success', `Accent color changed to ${name}`);
   };
 
+  // Password validation
+  const validatePassword = (pwd) => {
+    const checks = {
+      length: pwd.length >= 6,
+      uppercase: /[A-Z]/.test(pwd),
+      lowercase: /[a-z]/.test(pwd),
+      number: /[0-9]/.test(pwd)
+    };
+    return checks;
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+
+    // Validation
+    if (!newPassword || !confirmPassword) {
+      setPasswordError('Please fill in all fields');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    const passwordChecks = validatePassword(newPassword);
+    const isValid = Object.values(passwordChecks).every(check => check);
+
+    if (!isValid) {
+      setPasswordError('Password does not meet requirements');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      // If user has password, use changePassword, otherwise use setPassword
+      if (user?.hasPassword) {
+        if (!currentPassword) {
+          setPasswordError('Current password is required');
+          setPasswordLoading(false);
+          return;
+        }
+        const result = await changePassword(currentPassword, newPassword, confirmPassword);
+        if (result.success) {
+          addNotification('success', 'Password changed successfully');
+          setShowPasswordModal(false);
+          setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        } else {
+          setPasswordError(result.message);
+        }
+      } else {
+        // Set password for first time (Google users)
+        await authSetPassword(newPassword, confirmPassword);
+        addNotification('success', 'Password set successfully');
+        setShowPasswordModal(false);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      }
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || 'Failed to update password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleSetPassword = () => {
+    if (user?.hasPassword) {
+      setShowPasswordModal(true);
+    } else {
+      openSetPasswordModal();
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'account':
@@ -113,15 +206,15 @@ export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAc
             <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '24px 0', borderBottom: `1px solid ${colors.borderLight}` }}>
               <div style={{ position: 'relative' }}>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', border: `3px solid ${accentColor}` }}>
-                  <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={userInfo.profilePic || user?.profilePicture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <button style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: '50%', backgroundColor: accentColor, border: `2px solid ${colors.card}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <Camera size={14} style={{ color: '#fff' }} />
                 </button>
               </div>
               <div>
-                <p style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>Alex Thompson</p>
-                <p style={{ fontSize: 14, color: colors.textSecondary, margin: '4px 0 0 0' }}>alex.thompson@email.com</p>
+                <p style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name || user?.name || 'Alex Thompson'}</p>
+                <p style={{ fontSize: 14, color: colors.textSecondary, margin: '4px 0 0 0' }}>{userInfo.email || user?.email || 'alex.thompson@email.com'}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   <Crown size={16} style={{ color: '#ff9500' }} />
                   <span style={{ fontSize: 13, color: '#ff9500', fontWeight: 500 }}>Premium Member</span>
@@ -137,9 +230,29 @@ export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAc
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: '10px 14px', fontSize: 14, border: `1px solid ${colors.inputBorder}`, borderRadius: 8, width: 220, outline: 'none', boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
             </SettingRow>
 
-            <SettingRow label="Password" desc="Last changed 30 days ago">
-              <button onClick={() => addNotification('info', 'Password reset email sent')} style={{ padding: '10px 20px', fontSize: 14, border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.card, cursor: 'pointer', color: colors.text, fontWeight: 500 }}>
-                Change Password
+            {/* Password Section */}
+            <SettingRow 
+              label={user?.hasPassword ? "Password" : "Set Password"} 
+              desc={user?.hasPassword ? "Last changed 30 days ago" : "Add password for email/password login"}
+            >
+              <button 
+                onClick={handleSetPassword} 
+                style={{ 
+                  padding: '10px 20px', 
+                  fontSize: 14, 
+                  border: `1px solid ${user?.hasPassword ? colors.inputBorder : accentColor}`, 
+                  borderRadius: 8, 
+                  backgroundColor: user?.hasPassword ? colors.card : colors.accentLight, 
+                  cursor: 'pointer', 
+                  color: user?.hasPassword ? colors.text : accentColor, 
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}
+              >
+                {user?.hasPassword ? <Lock size={16} /> : <Key size={16} />}
+                {user?.hasPassword ? 'Change Password' : 'Set Password'}
               </button>
             </SettingRow>
 
@@ -312,7 +425,7 @@ export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAc
       case 'subscription':
         return (
           <div>
-            <div style={{ padding: 24, backgroundColor: colors.accentLight, borderRadius: 12, border: `1px solid ${accentColor}30`, marginBottom: 24 }}>
+            <div style={{ padding: 24, backgroundColor: colors.accentLight, borderRadius: 12, border: `1px solid ${accentColor}`, marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <Crown size={24} style={{ color: '#ff9500' }} />
                 <div>
@@ -422,77 +535,396 @@ export default function AdvocateSettings({ isDark, accentColor, setIsDark, setAc
     }
   };
 
+  // Password checks for the modal
+  const newPasswordChecks = validatePassword(passwordForm.newPassword);
+  const isNewPasswordValid = Object.values(newPasswordChecks).every(check => check);
+
   return (
-    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100vh', backgroundColor: colors.bg }}>
-      {/* Mobile Header */}
-      {isMobile && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.card }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ padding: 8, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: colors.text, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Menu size={20} />
-            </button>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: 0 }}>Settings</h2>
-          </div>
-          <button onClick={onClose} style={{ padding: 8, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: colors.textSecondary, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={20} />
-          </button>
-        </div>
-      )}
-
-      {/* Mobile Menu Overlay */}
-      {isMobile && showMobileMenu && (
-        <div onClick={() => setShowMobileMenu(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100 }} />
-      )}
-
-      {/* Sidebar */}
-      <div style={{
-        width: isMobile ? (showMobileMenu ? '100%' : '0') : 280,
-        backgroundColor: colors.card,
-        borderRight: isMobile ? 'none' : `1px solid ${colors.border}`,
-        display: 'flex',
-        flexDirection: 'column',
-        position: isMobile ? 'fixed' : 'relative',
-        left: 0,
-        top: isMobile ? 57 : 0,
-        bottom: 0,
-        zIndex: isMobile ? 101 : 'auto',
-        transition: 'width 0.3s ease',
-        overflow: 'hidden'
-      }}>
-        {!isMobile && (
-          <div style={{ padding: '24px 20px', borderBottom: `1px solid ${colors.borderLight}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>Settings</h2>
-              <button onClick={onClose} style={{ padding: 8, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: colors.textSecondary, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={18} />
+    <>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100vh', backgroundColor: colors.bg }}>
+        {/* Mobile Header */}
+        {isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.card }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ padding: 8, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: colors.text, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Menu size={20} />
               </button>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: 0 }}>Settings</h2>
             </div>
+            <button onClick={onClose} style={{ padding: 8, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: colors.textSecondary, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={20} />
+            </button>
           </div>
         )}
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); if (isMobile) setShowMobileMenu(false); }}
-              style={{
-                width: '100%', padding: '12px 16px', marginBottom: 4, borderRadius: 8, border: 'none', backgroundColor: activeTab === tab.id ? colors.accentLight : 'transparent',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.2s'
-              }}
-            >
-              <tab.icon size={18} style={{ color: activeTab === tab.id ? accentColor : colors.textSecondary }} />
-              <span style={{ fontSize: 14, fontWeight: activeTab === tab.id ? 500 : 400, color: activeTab === tab.id ? accentColor : colors.text }}>{tab.label}</span>
-            </button>
-          ))}
+        {/* Mobile Menu Overlay */}
+        {isMobile && showMobileMenu && (
+          <div onClick={() => setShowMobileMenu(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100 }} />
+        )}
+
+        {/* Sidebar */}
+        <div style={{
+          width: isMobile ? (showMobileMenu ? '100%' : '0') : 280,
+          backgroundColor: colors.card,
+          borderRight: isMobile ? 'none' : `1px solid ${colors.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          position: isMobile ? 'fixed' : 'relative',
+          left: 0,
+          top: isMobile ? 57 : 0,
+          bottom: 0,
+          zIndex: isMobile ? 101 : 'auto',
+          transition: 'width 0.3s ease',
+          overflow: 'hidden'
+        }}>
+          {!isMobile && (
+            <div style={{ padding: '24px 20px', borderBottom: `1px solid ${colors.borderLight}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h2 style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>Settings</h2>
+                <button onClick={onClose} style={{ padding: 8, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: colors.textSecondary, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); if (isMobile) setShowMobileMenu(false); }}
+                style={{
+                  width: '100%', padding: '12px 16px', marginBottom: 4, borderRadius: 8, border: 'none', backgroundColor: activeTab === tab.id ? colors.accentLight : 'transparent',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.2s'
+                }}
+              >
+                <tab.icon size={18} style={{ color: activeTab === tab.id ? accentColor : colors.textSecondary }} />
+                <span style={{ fontSize: 14, fontWeight: activeTab === tab.id ? 500 : 400, color: activeTab === tab.id ? accentColor : colors.text }}>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px 48px' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto' }}>
+            {renderContent()}
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px 48px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
-          {renderContent()}
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: colors.card,
+            borderRadius: 16,
+            maxWidth: 480,
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px 24px 20px',
+              borderBottom: `1px solid ${colors.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: accentColor,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff'
+                }}>
+                  <Lock size={24} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: colors.text }}>
+                    Change Password
+                  </h2>
+                  <p style={{ margin: '4px 0 0 0', fontSize: 13, color: colors.textSecondary }}>
+                    Update your account password
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  setPasswordError('');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colors.textSecondary,
+                  padding: 4
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handlePasswordSubmit} style={{ padding: 24 }}>
+              {passwordError && (
+                <div style={{
+                  padding: 12,
+                  backgroundColor: isDark ? 'rgba(235,77,61,0.15)' : '#fff0f0',
+                  border: '1px solid #ffcccc',
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  color: '#eb4d3d',
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <AlertCircle size={16} />
+                  {passwordError}
+                </div>
+              )}
+
+              {/* Current Password (only if user has password) */}
+              {user?.hasPassword && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: colors.text }}>
+                    Current Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPasswords.current ? 'text' : 'password'}
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                      placeholder="Enter current password"
+                      style={{
+                        width: '100%',
+                        padding: '12px 40px 12px 12px',
+                        border: `1px solid ${colors.inputBorder}`,
+                        borderRadius: 8,
+                        fontSize: 14,
+                        outline: 'none',
+                        backgroundColor: colors.input,
+                        color: colors.text,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                      style={{
+                        position: 'absolute',
+                        right: 12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: colors.textSecondary,
+                        padding: 4
+                      }}
+                    >
+                      {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* New Password */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: colors.text }}>
+                  New Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPasswords.new ? 'text' : 'password'}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    placeholder="Enter new password"
+                    style={{
+                      width: '100%',
+                      padding: '12px 40px 12px 12px',
+                      border: `1px solid ${colors.inputBorder}`,
+                      borderRadius: 8,
+                      fontSize: 14,
+                      outline: 'none',
+                      backgroundColor: colors.input,
+                      color: colors.text,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: colors.textSecondary,
+                      padding: 4
+                    }}
+                  >
+                    {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: colors.text }}>
+                  Confirm New Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPasswords.confirm ? 'text' : 'password'}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                    style={{
+                      width: '100%',
+                      padding: '12px 40px 12px 12px',
+                      border: `1px solid ${colors.inputBorder}`,
+                      borderRadius: 8,
+                      fontSize: 14,
+                      outline: 'none',
+                      backgroundColor: colors.input,
+                      color: colors.text,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: colors.textSecondary,
+                      padding: 4
+                    }}
+                  >
+                    {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Password Requirements */}
+              {passwordForm.newPassword && (
+                <div style={{
+                  padding: 16,
+                  backgroundColor: colors.bgTertiary,
+                  borderRadius: 8,
+                  marginBottom: 20
+                }}>
+                  <p style={{ margin: '0 0 12px 0', fontSize: 12, fontWeight: 600, color: colors.text, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Password Requirements:
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <PasswordCheck colors={colors} label="At least 6 characters" isValid={newPasswordChecks.length} />
+                    <PasswordCheck colors={colors} label="One uppercase letter (A-Z)" isValid={newPasswordChecks.uppercase} />
+                    <PasswordCheck colors={colors} label="One lowercase letter (a-z)" isValid={newPasswordChecks.lowercase} />
+                    <PasswordCheck colors={colors} label="One number (0-9)" isValid={newPasswordChecks.number} />
+                    {passwordForm.confirmPassword && (
+                      <PasswordCheck 
+                        colors={colors}
+                        label="Passwords match" 
+                        isValid={passwordForm.newPassword === passwordForm.confirmPassword} 
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordError('');
+                  }}
+                  disabled={passwordLoading}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    backgroundColor: 'transparent',
+                    color: colors.textSecondary,
+                    border: `1px solid ${colors.inputBorder}`,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    cursor: passwordLoading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordLoading || !isNewPasswordValid || passwordForm.newPassword !== passwordForm.confirmPassword || (user?.hasPassword && !passwordForm.currentPassword)}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    backgroundColor: (passwordLoading || !isNewPasswordValid || passwordForm.newPassword !== passwordForm.confirmPassword) ? colors.inputBorder : accentColor,
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: (passwordLoading || !isNewPasswordValid || passwordForm.newPassword !== passwordForm.confirmPassword) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
+
+// Password Check Component
+const PasswordCheck = ({ colors, label, isValid }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    {isValid ? (
+      <CheckCircle2 size={16} style={{ color: colors.success, flexShrink: 0 }} />
+    ) : (
+      <AlertCircle size={16} style={{ color: colors.textMuted, flexShrink: 0 }} />
+    )}
+    <span style={{
+      fontSize: 13,
+      color: isValid ? colors.success : colors.textSecondary,
+      fontWeight: isValid ? 500 : 400
+    }}>
+      {label}
+    </span>
+  </div>
+);

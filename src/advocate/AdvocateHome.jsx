@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar, { MobileSidebarDrawer, sidebarStyles } from './Sidebar';
 import Header, { headerStyles } from './Header';
 import Modal from './Modal';
 import Toast from './Toast';
-import Dashboard from './Dashboard';
-import MattersPage from './MattersPage';
-import CalendarPage from './CalendarPage';
-import CaseSummaryPageReact from './CaseSummaryPageReact';
-import DocumentsPage from './DocumentsPage';
-import MessagesPageReact from './MessagesPageReact';
-import BillingPageReact from './BillingPageReact';
-import AppIntegrationsPageReact from './AppIntegrationsPageReact';
-import Timeline from './Timeline';
-import AdvocateSettings from './AdvocateSettings';
 
 const getThemeColors = (isDark, accentColor) => ({
   bg: isDark ? '#0f0f1a' : '#ffffff',
@@ -41,8 +31,8 @@ const getThemeColors = (isDark, accentColor) => ({
 
 export default function AdvocateHome() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  const [activeView, setActiveView] = useState('dashboard');
+  const location = useLocation();
+  const { logout, user } = useAuth();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -51,6 +41,21 @@ export default function AdvocateHome() {
   const [accentColor, setAccentColor] = useState('#4772fa');
 
   const colors = getThemeColors(isDark, accentColor);
+
+  // Get current active view from location pathname
+  const getActiveView = () => {
+    const path = location.pathname.replace('/advocate/', '').split('/')[0];
+    return path || 'dashboard';
+  };
+
+  const activeView = getActiveView();
+
+  // Get user info from AuthContext or use defaults
+  const userInfo = {
+    name: user?.name || 'Alex Thompson',
+    email: user?.email || 'alex.thompson@email.com',
+    profilePic: user?.profilePic || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
+  };
 
   const clientNotifications = [
     { id: 1, type: 'hearing', title: 'Hearing Scheduled', desc: 'Thompson vs. Global Corp - Final Arguments', time: '2 days ago', read: false },
@@ -92,6 +97,10 @@ export default function AdvocateHome() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  const handleViewChange = (viewId) => {
+    navigate(`/advocate/${viewId}`);
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -99,42 +108,6 @@ export default function AdvocateHome() {
       navigate('/signin');
     } catch (error) {
       addNotification('error', 'Logout failed');
-    }
-  };
-
-  const renderContent = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'matters':
-        return <MattersPage />;
-      case 'tasks':
-        return <Dashboard />;
-      case 'case-summary':
-        return <CaseSummaryPageReact isDark={isDark} accentColor={accentColor} />;
-      case 'timeline':
-        return <Timeline />;
-      case 'calendar':
-        return <CalendarPage />;
-      case 'documents':
-        return <DocumentsPage />;
-      case 'billing':
-        return <BillingPageReact isDark={isDark} accentColor={accentColor} />;
-      case 'messages':
-        return <MessagesPageReact isDark={isDark} accentColor={accentColor} />;
-      case 'app-integrations':
-        return <AppIntegrationsPageReact isDark={isDark} accentColor={accentColor} />;
-      case 'settings':
-        return <AdvocateSettings
-          isDark={isDark}
-          accentColor={accentColor}
-          setIsDark={setIsDark}
-          setAccentColor={setAccentColor}
-          addNotification={addNotification}
-          onClose={() => setActiveView('dashboard')}
-        />;
-      default:
-        return <Dashboard />;
     }
   };
 
@@ -150,24 +123,26 @@ export default function AdvocateHome() {
         onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
         isDark={isDark}
         accentColor={accentColor}
+        userInfo={userInfo}
       />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex',  flex: 1, overflow: 'hidden' }}>
         <Sidebar
           activeView={activeView}
-          setActiveView={setActiveView}
+          setActiveView={handleViewChange}
           isExpanded={isSidebarExpanded}
           toggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
           addNotification={addNotification}
-          onOpenSettings={() => setActiveView('settings')}
+          onOpenSettings={() => handleViewChange('settings')}
           onLogout={handleLogout}
           isDark={isDark}
           accentColor={accentColor}
+          userInfo={userInfo}
         />
 
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: colors.bg }}>
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 0 }}>
-            {renderContent()}
+            <Outlet context={{ isDark, accentColor, setIsDark, setAccentColor, addNotification }} />
           </div>
         </main>
       </div>
@@ -176,21 +151,22 @@ export default function AdvocateHome() {
         isOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={(view) => { handleViewChange(view); setIsMobileSidebarOpen(false); }}
         addNotification={addNotification}
-        onOpenSettings={() => { setActiveView('settings'); setIsMobileSidebarOpen(false); }}
+        onOpenSettings={() => { handleViewChange('settings'); setIsMobileSidebarOpen(false); }}
         onLogout={handleLogout}
         isDark={isDark}
         accentColor={accentColor}
+        userInfo={userInfo}
       />
 
 
-      <Toast
+      {/* <Toast
         notifications={notifications}
         removeNotification={removeNotification}
         isDark={isDark}
         accentColor={accentColor}
-      />
+      /> */}
     </div>
   );
 }

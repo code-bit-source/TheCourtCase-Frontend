@@ -43,7 +43,7 @@ const navItems = [
   { id: 'app-integrations', icon: Puzzle, label: 'App Integrations' }
 ];
 
-export default function Sidebar({ activeView, setActiveView, isExpanded, toggleSidebar, addNotification = () => {}, onOpenSettings = () => {}, onLogout = () => {}, isDark = false, accentColor = '#4772fa' }) {
+export default function Sidebar({ activeView, setActiveView, isExpanded, toggleSidebar, addNotification = () => {}, onOpenSettings = () => {}, onLogout = () => {}, isDark = false, accentColor = '#4772fa', userInfo = {} }) {
   const colors = getThemeColors(isDark, accentColor);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -89,7 +89,7 @@ export default function Sidebar({ activeView, setActiveView, isExpanded, toggleS
             style={{ left: !isExpanded && !isMobile ? '50%' : '8px', transform: !isExpanded && !isMobile ? 'translateX(-50%)' : 'none', background: colors.card, border: `1px solid ${colors.border}` }}
           >
             <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.borderLight}`, backgroundColor: colors.bgSecondary }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>Alex Thompson</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name || 'Alex Thompson'}</p>
               <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>Advocate</p>
             </div>
             <div style={{ padding: '6px 0' }}>
@@ -150,7 +150,7 @@ export default function Sidebar({ activeView, setActiveView, isExpanded, toggleS
             flexShrink: 0
           }}>
             <img
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop"
+              src={userInfo.profilePic || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'}
               alt="Profile"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -158,7 +158,7 @@ export default function Sidebar({ activeView, setActiveView, isExpanded, toggleS
           {(isExpanded || isMobile) && (
             <>
               <div style={{ flex: 1, textAlign: 'left', overflow: 'hidden' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Alex Thompson</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userInfo.name || 'Alex Thompson'}</p>
                 <p style={{ fontSize: 11, color: colors.textSecondary, margin: 0 }}>Advocate</p>
               </div>
               <ChevronDown size={16} style={{ color: colors.textSecondary, transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
@@ -236,7 +236,7 @@ export default function Sidebar({ activeView, setActiveView, isExpanded, toggleS
   );
 }
 
-export function MobileSidebarDrawer({ isOpen, onClose, activeView, setActiveView, addNotification = () => {}, onOpenSettings = () => {}, onLogout = () => {}, isDark = false, accentColor = '#4772fa' }) {
+export function MobileSidebarDrawer({ isOpen, onClose, activeView, setActiveView, addNotification = () => {}, onOpenSettings = () => {}, onLogout = () => {}, isDark = false, accentColor = '#4772fa', userInfo = {} }) {
   const colors = getThemeColors(isDark, accentColor);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -307,7 +307,7 @@ export function MobileSidebarDrawer({ isOpen, onClose, activeView, setActiveView
             {showProfileMenu && (
               <div className="profile-menu-popup fade-in" style={{ bottom: '100%', marginBottom: 8, background: colors.card, border: `1px solid ${colors.border}` }}>
                 <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.borderLight}`, backgroundColor: colors.bgSecondary }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>Alex Thompson</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name || 'Alex Thompson'}</p>
                   <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>Advocate</p>
                 </div>
                 <div style={{ padding: '6px 0' }}>
@@ -356,11 +356,11 @@ export function MobileSidebarDrawer({ isOpen, onClose, activeView, setActiveView
                 overflow: 'hidden',
                 border: `2px solid ${accentColor}`
               }}>
-                <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop"
-                  alt="Profile"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+              <img
+                src={userInfo.profilePic || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'}
+                alt="Profile"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>Alex Thompson</p>

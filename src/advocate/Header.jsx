@@ -191,7 +191,7 @@ function HelpPanel({ isOpen, onClose, isDark, accentColor }) {
   );
 }
 
-export default function Header({ addNotification = () => {}, clientNotifications = [], onOpenSettings = () => {}, onOpenMobileMenu = () => {}, isDark = false, accentColor = '#4772fa' }) {
+export default function Header({ addNotification = () => {}, clientNotifications = [], onOpenSettings = () => {}, onOpenMobileMenu = () => {}, isDark = false, accentColor = '#4772fa', userInfo = {} }) {
   const colors = getThemeColors(isDark, accentColor);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -222,11 +222,11 @@ export default function Header({ addNotification = () => {}, clientNotifications
   return (
     <header className="productivity-header" style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.header, position: 'sticky', top: 0, zIndex: 80, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-        <button onClick={onOpenMobileMenu} className="nav-icon-btn mobile-menu-btn" title="Open menu" style={{ marginRight: 4 }}>
-          <Menu size={20} />
-        </button>
+        {/* <button onClick={onOpenMobileMenu} className="nav-icon-btn text-black mobile-menu-btn" title="Open menu" style={{ marginRight: 4 }}>
+          <Menu size={20} /> 
+        </button> */}
         
-        <div className="header-branding" style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 12 }}>
+        {/* <div className="header-branding" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32,
             height: 32,
@@ -240,24 +240,9 @@ export default function Header({ addNotification = () => {}, clientNotifications
           }}>
             <Scale size={18} style={{ color: '#fff' }} />
           </div>
-          <span style={{ fontSize: 16, fontWeight: 700, color: colors.text, letterSpacing: '-0.3px', whiteSpace: 'nowrap' }}>TheCourtCase</span>
-        </div>
-        
-        <div ref={searchRef} className="header-search" style={{ position: 'relative', width: '100%', maxWidth: 340 }}>
-          <div
-            onClick={() => setIsSearchOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', backgroundColor: colors.bgTertiary, borderRadius: 8, cursor: 'text', border: '1px solid transparent', transition: 'all 0.2s' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.bgTertiary}
-          >
-            <Search size={16} style={{ color: colors.textSecondary }} />
-            <span style={{ color: colors.textMuted, fontSize: 13 }}>Search...</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-              <span style={{ padding: '2px 6px', backgroundColor: colors.card, border: `1px solid ${colors.inputBorder}`, borderRadius: 4, fontSize: 10, color: colors.textSecondary }}>⌘K</span>
-            </div>
-          </div>
-          <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} isDark={isDark} accentColor={accentColor} />
-        </div>
+          <span className=''></span>
+        </div>  */}
+        <span className='text-black text-3xl uppercase font-bold'>Advocate</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -305,7 +290,6 @@ export const headerStyles = `
   .mobile-menu-btn { display: none; }
   @media (max-width: 768px) {
     .mobile-menu-btn { display: flex; }
-    .header-search { display: none !important; }
     .header-extras { display: none !important; }
     .productivity-header { padding: 0 12px !important; }
   }

@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { messageService } from '../services';
 import {
   MessageSquare, Phone, Video, Info, Send, Paperclip,
   Search, Users, Inbox, Smartphone, Mail, Bell,
@@ -28,16 +30,115 @@ const getThemeColors = (isDark, accentColor) => ({
   inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
 });
 
-export default function MessagesPageReact({ isDark = false, accentColor = '#4772fa' }) {
+export default function MessagesPageReact() {
+  const context = useOutletContext();
+  const isDark = context?.isDark || false;
+  const accentColor = context?.accentColor || '#4772fa';
+  const addNotification = context?.addNotification || (() => {});
+  
   const colors = getThemeColors(isDark, accentColor);
   const [message, setMessage] = useState('');
-  const [activeConversation, setActiveConversation] = useState(1);
+  const [activeConversation, setActiveConversation] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showContactInfo, setShowContactInfo] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  // Loading and error states
+  const [loading, setLoading] = useState({
+    conversations: false,
+    messages: false,
+    sending: false
+  });
+  const [error, setError] = useState({
+    conversations: null,
+    messages: null
+  });
+
+  // Fetch conversations on component mount
+  useEffect(() => {
+    const fetchConversations = async () => {
+      setLoading(prev => ({ ...prev, conversations: true }));
+      try {
+        const response = await messageService.getMessages();
+        // Transform API response to match UI format
+        const formattedConversations = response.data.map(conv => ({
+          id: conv.id,
+          name: conv.participants?.[0]?.name || 'Unknown',
+          role: conv.participants?.[0]?.role || 'User',
+          avatar: conv.participants?.[0]?.avatar || 'https://via.placeholder.com/100',
+          status: conv.participants?.[0]?.status || 'offline',
+          matter: conv.case?.name || 'No matter',
+          matterNumber: conv.case?.caseNumber || '',
+          lastMessage: conv.lastMessage || 'No messages yet',
+          lastMessageTime: conv.lastMessageTime || 'Recently',
+          unread: conv.unreadCount || 0,
+          channel: conv.channel || 'portal',
+          phone: conv.participants?.[0]?.phone || '',
+          email: conv.participants?.[0]?.email || ''
+        }));
+        setConversations(formattedConversations);
+        setError(prev => ({ ...prev, conversations: null }));
+        
+        // Set first conversation as active if none selected
+        if (!activeConversation && formattedConversations.length > 0) {
+          setActiveConversation(formattedConversations[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching conversations:', err);
+        setError(prev => ({ ...prev, conversations: 'Failed to load conversations' }));
+        addNotification('error', 'Failed to load conversations');
+      } finally {
+        setLoading(prev => ({ ...prev, conversations: false }));
+      }
+    };
+
+    fetchConversations();
+}, [addNotification, activeConversation]);
+
+
+  // Fetch messages when conversation changes
+  useEffect(() => {
+    if (!activeConversation) return;
+
+    const fetchMessages = async () => {
+      setLoading(prev => ({ ...prev, messages: true }));
+      try {
+        const response = await messageService.getConversation(activeConversation);
+        // Transform API response to match UI format
+        const formattedMessages = response.data.map(msg => ({
+          id: msg.id,
+          from: msg.sender?.role === 'client' ? 'client' : 'advocate',
+          name: msg.sender?.name || 'Unknown',
+          text: msg.content || '',
+          time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+          channel: msg.channel || 'portal',
+          read: msg.read || false,
+          attachment: msg.attachment ? {
+            name: msg.attachment.name,
+            size: msg.attachment.size
+          } : null
+        }));
+        setAllMessages(prev => ({ ...prev, [activeConversation]: formattedMessages }));
+        setError(prev => ({ ...prev, messages: null }));
+        
+        // Mark messages as read
+        await messageService.markAllAsRead();
+      } catch (err) {
+        console.error('Error fetching messages:', err);
+        setError(prev => ({ ...prev, messages: 'Failed to load messages' }));
+        addNotification('error', 'Failed to load messages');
+      } finally {
+        setLoading(prev => ({ ...prev, messages: false }));
+      }
+    };
+
+    fetchMessages();
+  }, [activeConversation, addNotification]);
+
+  // Mobile responsive check
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
@@ -45,51 +146,8 @@ export default function MessagesPageReact({ isDark = false, accentColor = '#4772
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const [conversations, setConversations] = useState([
-    {
-      id: 1,
-      name: 'Sarah Jenkins',
-      role: 'Lead Advocate',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-      status: 'online',
-      matter: 'Thompson vs. Global Corp',
-      matterNumber: 'MAT-2024-001',
-      lastMessage: "Yes, please upload them now. Great work finding those.",
-      lastMessageTime: '11:15 AM',
-      unread: 2,
-      channel: 'portal',
-      phone: '+1 (555) 123-4567',
-      email: 'sarah.jenkins@lawfirm.com'
-    },
-    {
-      id: 2,
-      name: 'David Chen',
-      role: 'Paralegal',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
-      status: 'offline',
-      matter: 'Thompson vs. Global Corp',
-      matterNumber: 'MAT-2024-001',
-      lastMessage: "I've prepared the document summary for your review.",
-      lastMessageTime: 'Yesterday',
-      unread: 0,
-      channel: 'email',
-      phone: '+1 (555) 234-5678',
-      email: 'david.chen@lawfirm.com'
-    }
-  ]);
-
-  const [allMessages, setAllMessages] = useState({
-    1: [
-      { id: 1, from: 'advocate', name: 'Sarah Jenkins', text: "Hello Alex, I hope you're doing well. I wanted to touch base regarding the Thompson case.", time: '10:30 AM', date: 'Today', channel: 'portal', read: true },
-      { id: 2, from: 'advocate', name: 'Sarah Jenkins', text: "I've reviewed your documents. The regulatory compliance section is strong, but we need to strengthen the financial disclosures.", time: '10:45 AM', date: 'Today', channel: 'portal', read: true },
-      { id: 3, from: 'client', name: 'You', text: 'Thank you Sarah! Should I upload the additional audit reports? I have the 2023 financials ready.', time: '11:02 AM', date: 'Today', channel: 'portal', read: true },
-      { id: 4, from: 'advocate', name: 'Sarah Jenkins', text: "Yes, please upload them now. Great work finding those. They'll really strengthen our position.", time: '11:15 AM', date: 'Today', channel: 'portal', read: true }
-    ],
-    2: [
-      { id: 1, from: 'advocate', name: 'David Chen', text: "Hi Alex, I've been working on organizing all the evidence for the Thompson case.", time: '2:30 PM', date: 'Yesterday', channel: 'email', read: true },
-      { id: 2, from: 'advocate', name: 'David Chen', text: "I've prepared the document summary for your review. Would you like me to send it over?", time: '2:45 PM', date: 'Yesterday', channel: 'email', read: true }
-    ]
-  });
+  const [conversations, setConversations] = useState([]);
+  const [allMessages, setAllMessages] = useState({});
 
   const channels = [
     { id: 'all', label: 'All Messages', icon: Inbox, count: conversations.reduce((sum, c) => sum + c.unread, 0) },
@@ -133,10 +191,19 @@ export default function MessagesPageReact({ isDark = false, accentColor = '#4772
   const currentConversation = conversations.find((c) => c.id === activeConversation);
   const currentMessages = allMessages[activeConversation] || [];
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
+  const handleSendMessage = async () => {
+    if (!message.trim() || !activeConversation) return;
+
+    setLoading(prev => ({ ...prev, sending: true }));
+    try {
+      const response = await messageService.sendMessage({
+        conversationId: activeConversation,
+        content: message
+      });
+
+      // Add new message to state
       const newMsg = {
-        id: currentMessages.length + 1,
+        id: response.data.id,
         from: 'client',
         name: 'You',
         text: message,
@@ -154,33 +221,64 @@ export default function MessagesPageReact({ isDark = false, accentColor = '#4772
       ));
       setMessage('');
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch (err) {
+      console.error('Error sending message:', err);
+      addNotification('error', 'Failed to send message');
+    } finally {
+      setLoading(prev => ({ ...prev, sending: false }));
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      const newMsg = {
-        id: currentMessages.length + 1,
-        from: 'client',
-        name: 'You',
-        text: `Shared a file: ${files[0].name}`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: 'Today',
-        channel: currentConversation?.channel || 'portal',
-        read: true,
-        attachment: { name: files[0].name, size: `${(files[0].size / 1024).toFixed(0)} KB` }
-      };
-      setAllMessages((prev) => ({
-        ...prev,
-        [activeConversation]: [...(prev[activeConversation] || []), newMsg]
-      }));
+    if (files && files.length > 0 && activeConversation) {
+      setLoading(prev => ({ ...prev, sending: true }));
+      try {
+        const formData = new FormData();
+        formData.append('file', files[0]);
+        formData.append('conversationId', activeConversation);
+
+        const response = await messageService.uploadAttachment(formData);
+
+        // Add new message with attachment to state
+        const newMsg = {
+          id: response.data.id,
+          from: 'client',
+          name: 'You',
+          text: `Shared a file: ${files[0].name}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: 'Today',
+          channel: currentConversation?.channel || 'portal',
+          read: true,
+          attachment: { name: files[0].name, size: `${(files[0].size / 1024).toFixed(0)} KB` }
+        };
+        setAllMessages((prev) => ({
+          ...prev,
+          [activeConversation]: [...(prev[activeConversation] || []), newMsg]
+        }));
+        setConversations((prev) => prev.map((c) =>
+          c.id === activeConversation ? { ...c, lastMessage: `Shared a file: ${files[0].name}`, lastMessageTime: 'Just now' } : c
+        ));
+        addNotification('success', 'File uploaded successfully');
+      } catch (err) {
+        console.error('Error uploading file:', err);
+        addNotification('error', 'Failed to upload file');
+      } finally {
+        setLoading(prev => ({ ...prev, sending: false }));
+      }
     }
   };
 
-  const selectConversation = (convId) => {
+  const selectConversation = async (convId) => {
     setActiveConversation(convId);
     setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, unread: 0 } : c));
+    
+    // Mark conversation as read
+    try {
+      await messageService.markAsRead(convId);
+    } catch (err) {
+      console.error('Error marking conversation as read:', err);
+    }
   };
 
   return (
@@ -225,7 +323,18 @@ export default function MessagesPageReact({ isDark = false, accentColor = '#4772
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filteredConversations.length > 0 ? filteredConversations.map((conv) => {
+          {loading.conversations ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <div style={{ width: 40, height: 40, border: `3px solid ${colors.borderLight}`, borderTopColor: accentColor, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
+              <p style={{ fontSize: 14, color: colors.textSecondary }}>Loading conversations...</p>
+            </div>
+          ) : error.conversations ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <MessageSquare size={40} style={{ color: colors.error, marginBottom: 12 }} />
+              <p style={{ fontSize: 14, color: colors.textSecondary, margin: '0 0 8px 0' }}>{error.conversations}</p>
+              <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', backgroundColor: accentColor, color: '#fff', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: 'none' }}>Retry</button>
+            </div>
+          ) : filteredConversations.length > 0 ? filteredConversations.map((conv) => {
             const ChannelIcon = getChannelIcon(conv.channel);
             return (
               <div
@@ -319,7 +428,18 @@ export default function MessagesPageReact({ isDark = false, accentColor = '#4772
         )}
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, backgroundColor: colors.bgSecondary, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {currentMessages.map((msg, i) => {
+          {loading.messages ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <div style={{ width: 40, height: 40, border: `3px solid ${colors.borderLight}`, borderTopColor: accentColor, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
+              <p style={{ fontSize: 14, color: colors.textSecondary }}>Loading messages...</p>
+            </div>
+          ) : error.messages ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <MessageSquare size={40} style={{ color: colors.error, marginBottom: 12 }} />
+              <p style={{ fontSize: 14, color: colors.textSecondary, margin: '0 0 8px 0' }}>{error.messages}</p>
+              <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', backgroundColor: accentColor, color: '#fff', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: 'none' }}>Retry</button>
+            </div>
+          ) : currentMessages.map((msg, i) => {
             const showDateDivider = i === 0 || currentMessages[i - 1]?.date !== msg.date;
             const ChannelIcon = getChannelIcon(msg.channel);
             return (
@@ -387,8 +507,12 @@ export default function MessagesPageReact({ isDark = false, accentColor = '#4772
                 rows={1}
               />
             </div>
-            <button onClick={handleSendMessage} disabled={!message.trim()} style={{ padding: 12, backgroundColor: message.trim() ? accentColor : colors.bgTertiary, color: message.trim() ? '#fff' : colors.textMuted, borderRadius: 12, cursor: message.trim() ? 'pointer' : 'not-allowed', border: 'none', minWidth: 48, minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
-              <Send size={20} />
+            <button onClick={handleSendMessage} disabled={!message.trim() || loading.sending} style={{ padding: 12, backgroundColor: message.trim() && !loading.sending ? accentColor : colors.bgTertiary, color: message.trim() && !loading.sending ? '#fff' : colors.textMuted, borderRadius: 12, cursor: message.trim() && !loading.sending ? 'pointer' : 'not-allowed', border: 'none', minWidth: 48, minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              {loading.sending ? (
+                <div style={{ width: 20, height: 20, border: `2px solid ${colors.textMuted}`, borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+              ) : (
+                <Send size={20} />
+              )}
             </button>
           </div>
         </div>

@@ -29,6 +29,17 @@ import AdminHome from "@/admin/AdminHome";
 import AdvocateHome from "@/advocate/AdvocateHome";
 import ClientHome from "@/client/ClientHome";
 import ParalegalHome from "@/b_paralegal/ParalegalHome";
+import Dashboard from "@/advocate/Dashboard";
+import MattersPage from "@/advocate/MattersPage";
+import TasksPage from "@/advocate/TasksPage";
+import CalendarPage from "@/advocate/CalendarPage";
+import CaseSummaryPageReact from "@/advocate/CaseSummaryPageReact";
+import DocumentsPage from "@/advocate/DocumentsPage";
+import MessagesPageReact from "@/advocate/MessagesPageReact";
+import BillingPageReact from "@/advocate/BillingPageReact";
+import AppIntegrationsPageReact from "@/advocate/AppIntegrationsPageReact";
+import Timeline from "@/advocate/Timeline";
+import AdvocateSettings from "@/advocate/AdvocateSettings";
 
 function App() {
   return (
@@ -105,7 +116,20 @@ function App() {
                 <AdvocateHome />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="matters" element={<MattersPage />} />
+            <Route path="tasks" element={<TasksPage />} />
+            <Route path="case-summary" element={<CaseSummaryPageReact />} />
+            <Route path="timeline" element={<Timeline />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="billing" element={<BillingPageReact />} />
+            <Route path="messages" element={<MessagesPageReact />} />
+            <Route path="app-integrations" element={<AppIntegrationsPageReact />} />
+            <Route path="settings" element={<AdvocateSettings />} />
+            <Route index element={<Dashboard />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>

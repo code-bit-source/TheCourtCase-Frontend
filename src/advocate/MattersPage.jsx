@@ -1,4 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  caseService, 
+  documentService, 
+  taskService, 
+  noteService, 
+  activityService 
+} from '../services';
 import {
   Scale, Search, Plus, Filter, Grid3X3, List, MoreVertical,
   X, User, Briefcase, Phone, Mail, FileText, CheckCircle2,
@@ -32,16 +39,22 @@ const getThemeColors = (isDark, accentColor) => ({
 export default function MattersPage({ addNotification = () => {}, setActiveView = () => {}, isDark = false, accentColor = '#4772fa' }) {
   const colors = getThemeColors(isDark, accentColor);
   
-  const [matters, setMatters] = useState([
-    { id: 1, number: 'MAT-2024-001', name: 'Thompson vs. Global Corp', client: 'Alex Thompson', clientPhone: '+1 (555) 123-4567', clientEmail: 'alex.thompson@email.com', status: 'Open', practiceArea: 'Corporate Litigation', responsible: 'Sarah Jenkins', openDate: 'Jan 12, 2024', lastActivity: '2 hours ago', balance: 2750, description: 'Contract dispute regarding breach of service agreement', tags: ['Priority', 'Trial'] },
-    { id: 2, number: 'MAT-2024-002', name: 'Miller Estate Planning', client: 'James Miller', clientPhone: '+1 (555) 234-5678', clientEmail: 'james.miller@email.com', status: 'Open', practiceArea: 'Estate Planning', responsible: 'Michael Brown', openDate: 'Feb 05, 2024', lastActivity: '1 day ago', balance: 5200, description: 'Comprehensive estate planning including will and trust', tags: ['VIP'] },
-    { id: 3, number: 'MAT-2024-003', name: 'Davis Property Acquisition', client: 'Emily Davis', clientPhone: '+1 (555) 345-6789', clientEmail: 'emily.davis@email.com', status: 'Open', practiceArea: 'Real Estate', responsible: 'Sarah Jenkins', openDate: 'Feb 18, 2024', lastActivity: '3 days ago', balance: 0, description: 'Commercial property acquisition and due diligence', tags: [] },
-    { id: 4, number: 'MAT-2023-089', name: 'Wilson Trademark Registration', client: 'Robert Wilson', clientPhone: '+1 (555) 456-7890', clientEmail: 'robert.wilson@email.com', status: 'Closed', practiceArea: 'Intellectual Property', responsible: 'Emily Watson', openDate: 'Nov 20, 2023', lastActivity: '2 weeks ago', balance: 0, description: 'Trademark registration for tech startup brand', tags: ['Completed'] },
-    { id: 5, number: 'MAT-2024-004', name: 'Johnson Family Trust', client: 'Patricia Johnson', clientPhone: '+1 (555) 567-8901', clientEmail: 'patricia.johnson@email.com', status: 'Pending', practiceArea: 'Estate Planning', responsible: 'Michael Brown', openDate: 'Mar 01, 2024', lastActivity: '5 days ago', balance: 3500, description: 'Family trust establishment and asset transfer', tags: ['Review'] },
-    { id: 6, number: 'MAT-2024-005', name: 'Tech Solutions IP Dispute', client: 'Tech Solutions Inc.', clientPhone: '+1 (555) 678-9012', clientEmail: 'legal@techsolutions.com', status: 'Open', practiceArea: 'Intellectual Property', responsible: 'James Lee', openDate: 'Mar 10, 2024', lastActivity: '1 hour ago', balance: 8500, description: 'Patent infringement case against competitor', tags: ['Priority', 'Litigation'] },
-    { id: 7, number: 'MAT-2024-006', name: 'Anderson Divorce Settlement', client: 'Lisa Anderson', clientPhone: '+1 (555) 789-0123', clientEmail: 'lisa.anderson@email.com', status: 'Open', practiceArea: 'Family Law', responsible: 'Emily Watson', openDate: 'Mar 12, 2024', lastActivity: '4 hours ago', balance: 1200, description: 'Uncontested divorce with asset division', tags: [] },
-    { id: 8, number: 'MAT-2023-045', name: 'Brown Construction Contract', client: 'Brown & Sons LLC', clientPhone: '+1 (555) 890-1234', clientEmail: 'contact@brownsons.com', status: 'Closed', practiceArea: 'Corporate', responsible: 'Sarah Jenkins', openDate: 'Aug 15, 2023', lastActivity: '1 month ago', balance: 0, description: 'Construction contract review and negotiation', tags: ['Completed'] }
-  ]);
+  // State for data from API
+  const [matters, setMatters] = useState([]);
+  const [loading, setLoading] = useState({
+    matters: false,
+    documents: false,
+    tasks: false,
+    notes: false,
+    activities: false
+  });
+  const [error, setError] = useState({
+    matters: null,
+    documents: null,
+    tasks: null,
+    notes: null,
+    activities: null
+  });
 
   const [selectedMatter, setSelectedMatter] = useState(null);
   const [viewMode, setViewMode] = useState('list');
@@ -85,35 +98,188 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
   });
   const [shareEmail, setShareEmail] = useState('');
 
-  const [matterDocuments] = useState([
-    { id: 1, matterId: 1, name: 'Contract_Agreement.pdf', type: 'pdf', size: '2.4 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 10, 2024', category: 'Contracts' },
-    { id: 2, matterId: 1, name: 'Evidence_Exhibit_A.docx', type: 'doc', size: '840 KB', uploadedBy: 'David Chen', uploadDate: 'Mar 08, 2024', category: 'Evidence' },
-    { id: 3, matterId: 1, name: 'Court_Filing_Response.pdf', type: 'pdf', size: '1.1 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 05, 2024', category: 'Court Documents' },
-    { id: 4, matterId: 1, name: 'Client_Correspondence.pdf', type: 'pdf', size: '320 KB', uploadedBy: 'Alex Thompson', uploadDate: 'Mar 01, 2024', category: 'Correspondence' },
-    { id: 5, matterId: 2, name: 'Will_Draft_v2.docx', type: 'doc', size: '156 KB', uploadedBy: 'Michael Brown', uploadDate: 'Feb 28, 2024', category: 'Drafts' },
-    { id: 6, matterId: 2, name: 'Asset_Inventory.xlsx', type: 'excel', size: '89 KB', uploadedBy: 'James Miller', uploadDate: 'Feb 20, 2024', category: 'Financial' }
-  ]);
+  // State for matter-related data
+  const [matterDocuments, setMatterDocuments] = useState([]);
+  const [matterTasks, setMatterTasks] = useState([]);
+  const [matterNotes, setMatterNotes] = useState([]);
+  const [matterActivities, setMatterActivities] = useState([]);
 
-  const [matterTasks] = useState([
-    { id: 1, matterId: 1, title: 'Review counter-affidavit draft', completed: false, priority: 3, dueDate: 'Today', assignee: 'Sarah Jenkins' },
-    { id: 2, matterId: 1, title: 'Prepare evidence summary', completed: false, priority: 2, dueDate: 'Tomorrow', assignee: 'David Chen' },
-    { id: 3, matterId: 1, title: 'File motion for extension', completed: true, priority: 1, dueDate: 'Mar 15', assignee: 'Sarah Jenkins' },
-    { id: 4, matterId: 2, title: 'Draft trust agreement', completed: false, priority: 2, dueDate: 'Mar 20', assignee: 'Michael Brown' },
-    { id: 5, matterId: 2, title: 'Schedule client meeting', completed: true, priority: 1, dueDate: 'Mar 10', assignee: 'Michael Brown' }
-  ]);
+  // Fetch data from API
+  useEffect(() => {
+    const fetchMatters = async () => {
+      setLoading(prev => ({ ...prev, matters: true }));
+      try {
+        const response = await caseService.getCases();
+        // Transform the data to match the expected format
+        const formattedMatters = response.data.map(matter => ({
+          id: matter.id,
+          number: matter.caseNumber || `MAT-${new Date().getFullYear()}-${String(matter.id).padStart(3, '0')}`,
+          name: matter.name,
+          client: matter.client?.name || 'Unknown Client',
+          clientPhone: matter.client?.phone || '',
+          clientEmail: matter.client?.email || '',
+          status: matter.status || 'Open',
+          practiceArea: matter.practiceArea || 'General',
+          responsible: matter.assignedTo?.name || 'Unassigned',
+          openDate: new Date(matter.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          lastActivity: matter.lastActivity || 'No recent activity',
+          balance: matter.balance || 0,
+          description: matter.description || 'No description provided',
+          tags: matter.tags || []
+        }));
+        setMatters(formattedMatters);
+        setError(prev => ({ ...prev, matters: null }));
+      } catch (err) {
+        console.error('Error fetching matters:', err);
+        setError(prev => ({ ...prev, matters: 'Failed to load matters' }));
+        // Use sample data if API fails
+        setMatters([
+          { id: 1, number: 'MAT-2024-001', name: 'Thompson vs. Global Corp', client: 'Alex Thompson', clientPhone: '+1 (555) 123-4567', clientEmail: 'alex.thompson@email.com', status: 'Open', practiceArea: 'Corporate Litigation', responsible: 'Sarah Jenkins', openDate: 'Jan 12, 2024', lastActivity: '2 hours ago', balance: 2750, description: 'Contract dispute regarding breach of service agreement', tags: ['Priority', 'Trial'] },
+          { id: 2, number: 'MAT-2024-002', name: 'Miller Estate Planning', client: 'James Miller', clientPhone: '+1 (555) 234-5678', clientEmail: 'james.miller@email.com', status: 'Open', practiceArea: 'Estate Planning', responsible: 'Michael Brown', openDate: 'Feb 05, 2024', lastActivity: '1 day ago', balance: 5200, description: 'Comprehensive estate planning including will and trust', tags: ['VIP'] },
+          { id: 3, number: 'MAT-2024-003', name: 'Davis Property Acquisition', client: 'Emily Davis', clientPhone: '+1 (555) 345-6789', clientEmail: 'emily.davis@email.com', status: 'Open', practiceArea: 'Real Estate', responsible: 'Sarah Jenkins', openDate: 'Feb 18, 2024', lastActivity: '3 days ago', balance: 0, description: 'Commercial property acquisition and due diligence', tags: [] },
+          { id: 4, number: 'MAT-2023-089', name: 'Wilson Trademark Registration', client: 'Robert Wilson', clientPhone: '+1 (555) 456-7890', clientEmail: 'robert.wilson@email.com', status: 'Closed', practiceArea: 'Intellectual Property', responsible: 'Emily Watson', openDate: 'Nov 20, 2023', lastActivity: '2 weeks ago', balance: 0, description: 'Trademark registration for tech startup brand', tags: ['Completed'] },
+          { id: 5, number: 'MAT-2024-004', name: 'Johnson Family Trust', client: 'Patricia Johnson', clientPhone: '+1 (555) 567-8901', clientEmail: 'patricia.johnson@email.com', status: 'Pending', practiceArea: 'Estate Planning', responsible: 'Michael Brown', openDate: 'Mar 01, 2024', lastActivity: '5 days ago', balance: 3500, description: 'Family trust establishment and asset transfer', tags: ['Review'] },
+          { id: 6, number: 'MAT-2024-005', name: 'Tech Solutions IP Dispute', client: 'Tech Solutions Inc.', clientPhone: '+1 (555) 678-9012', clientEmail: 'legal@techsolutions.com', status: 'Open', practiceArea: 'Intellectual Property', responsible: 'James Lee', openDate: 'Mar 10, 2024', lastActivity: '1 hour ago', balance: 8500, description: 'Patent infringement case against competitor', tags: ['Priority', 'Litigation'] },
+          { id: 7, number: 'MAT-2024-006', name: 'Anderson Divorce Settlement', client: 'Lisa Anderson', clientPhone: '+1 (555) 789-0123', clientEmail: 'lisa.anderson@email.com', status: 'Open', practiceArea: 'Family Law', responsible: 'Emily Watson', openDate: 'Mar 12, 2024', lastActivity: '4 hours ago', balance: 1200, description: 'Uncontested divorce with asset division', tags: [] },
+          { id: 8, number: 'MAT-2023-045', name: 'Brown Construction Contract', client: 'Brown & Sons LLC', clientPhone: '+1 (555) 890-1234', clientEmail: 'contact@brownsons.com', status: 'Closed', practiceArea: 'Corporate', responsible: 'Sarah Jenkins', openDate: 'Aug 15, 2023', lastActivity: '1 month ago', balance: 0, description: 'Construction contract review and negotiation', tags: ['Completed'] }
+        ]);
+      } finally {
+        setLoading(prev => ({ ...prev, matters: false }));
+      }
+    };
 
-  const [matterNotes, setMatterNotes] = useState([
-    { id: 1, matterId: 1, content: 'Client confirmed availability for the hearing on March 18th. Will need to prepare final arguments by March 15th.', author: 'Sarah Jenkins', date: 'Mar 10, 2024' },
-    { id: 2, matterId: 1, content: 'Received additional evidence from client. Need to review and categorize.', author: 'David Chen', date: 'Mar 08, 2024' },
-    { id: 3, matterId: 2, content: 'Initial consultation completed. Client wants to establish a revocable living trust.', author: 'Michael Brown', date: 'Feb 05, 2024' }
-  ]);
+    fetchMatters();
+  }, []);
 
-  const [matterActivities] = useState([
-    { id: 1, matterId: 1, type: 'document', action: 'Document uploaded', detail: 'Contract_Agreement.pdf', user: 'Sarah Jenkins', time: '2 hours ago' },
-    { id: 2, matterId: 1, type: 'task', action: 'Task completed', detail: 'File motion for extension', user: 'Sarah Jenkins', time: '1 day ago' },
-    { id: 3, matterId: 1, type: 'note', action: 'Note added', detail: 'Client meeting notes', user: 'David Chen', time: '2 days ago' },
-    { id: 4, matterId: 1, type: 'billing', action: 'Time entry added', detail: '2.5 hours - Document review', user: 'Sarah Jenkins', time: '3 days ago' }
-  ]);
+  // Fetch matter-specific data when a matter is selected
+  useEffect(() => {
+    if (!selectedMatter) return;
+
+    const fetchMatterDocuments = async () => {
+      setLoading(prev => ({ ...prev, documents: true }));
+      try {
+        const response = await documentService.getDocuments({ caseId: selectedMatter.id });
+        // Transform the data to match the expected format
+        const formattedDocs = response.data.map(doc => ({
+          id: doc.id,
+          matterId: doc.caseId,
+          name: doc.name,
+          type: doc.fileType || 'pdf',
+          size: doc.size || '0 KB',
+          uploadedBy: doc.uploadedBy?.name || 'Unknown',
+          uploadDate: new Date(doc.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          category: doc.category || 'Uncategorized'
+        }));
+        setMatterDocuments(formattedDocs);
+        setError(prev => ({ ...prev, documents: null }));
+      } catch (err) {
+        console.error('Error fetching documents:', err);
+        setError(prev => ({ ...prev, documents: 'Failed to load documents' }));
+        // Use sample data if API fails
+        setMatterDocuments([
+          { id: 1, matterId: selectedMatter.id, name: 'Contract_Agreement.pdf', type: 'pdf', size: '2.4 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 10, 2024', category: 'Contracts' },
+          { id: 2, matterId: selectedMatter.id, name: 'Evidence_Exhibit_A.docx', type: 'doc', size: '840 KB', uploadedBy: 'David Chen', uploadDate: 'Mar 08, 2024', category: 'Evidence' },
+          { id: 3, matterId: selectedMatter.id, name: 'Court_Filing_Response.pdf', type: 'pdf', size: '1.1 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 05, 2024', category: 'Court Documents' },
+          { id: 4, matterId: selectedMatter.id, name: 'Client_Correspondence.pdf', type: 'pdf', size: '320 KB', uploadedBy: 'Alex Thompson', uploadDate: 'Mar 01, 2024', category: 'Correspondence' }
+        ]);
+      } finally {
+        setLoading(prev => ({ ...prev, documents: false }));
+      }
+    };
+
+    const fetchMatterTasks = async () => {
+      setLoading(prev => ({ ...prev, tasks: true }));
+      try {
+        const response = await taskService.getCaseTasks(selectedMatter.id);
+        // Transform the data to match the expected format
+        const formattedTasks = response.data.map(task => ({
+          id: task.id,
+          matterId: task.caseId,
+          title: task.title,
+          completed: task.status === 'completed',
+          priority: task.priority || 2,
+          dueDate: new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          assignee: task.assignedTo?.name || 'Unassigned'
+        }));
+        setMatterTasks(formattedTasks);
+        setError(prev => ({ ...prev, tasks: null }));
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        setError(prev => ({ ...prev, tasks: 'Failed to load tasks' }));
+        // Use sample data if API fails
+        setMatterTasks([
+          { id: 1, matterId: selectedMatter.id, title: 'Review counter-affidavit draft', completed: false, priority: 3, dueDate: 'Today', assignee: 'Sarah Jenkins' },
+          { id: 2, matterId: selectedMatter.id, title: 'Prepare evidence summary', completed: false, priority: 2, dueDate: 'Tomorrow', assignee: 'David Chen' },
+          { id: 3, matterId: selectedMatter.id, title: 'File motion for extension', completed: true, priority: 1, dueDate: 'Mar 15', assignee: 'Sarah Jenkins' }
+        ]);
+      } finally {
+        setLoading(prev => ({ ...prev, tasks: false }));
+      }
+    };
+
+    const fetchMatterNotes = async () => {
+      setLoading(prev => ({ ...prev, notes: true }));
+      try {
+        const response = await noteService.getMyNotes({ caseId: selectedMatter.id });
+        // Transform the data to match the expected format
+        const formattedNotes = response.data.map(note => ({
+          id: note.id,
+          matterId: note.caseId,
+          content: note.content,
+          author: note.author?.name || 'Unknown',
+          date: new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        }));
+        setMatterNotes(formattedNotes);
+        setError(prev => ({ ...prev, notes: null }));
+      } catch (err) {
+        console.error('Error fetching notes:', err);
+        setError(prev => ({ ...prev, notes: 'Failed to load notes' }));
+        // Use sample data if API fails
+        setMatterNotes([
+          { id: 1, matterId: selectedMatter.id, content: 'Client confirmed availability for the hearing on March 18th. Will need to prepare final arguments by March 15th.', author: 'Sarah Jenkins', date: 'Mar 10, 2024' },
+          { id: 2, matterId: selectedMatter.id, content: 'Received additional evidence from client. Need to review and categorize.', author: 'David Chen', date: 'Mar 08, 2024' }
+        ]);
+      } finally {
+        setLoading(prev => ({ ...prev, notes: false }));
+      }
+    };
+
+    const fetchMatterActivities = async () => {
+      setLoading(prev => ({ ...prev, activities: true }));
+      try {
+        const response = await activityService.getCaseActivities(selectedMatter.id);
+        // Transform the data to match the expected format
+        const formattedActivities = response.data.map(activity => ({
+          id: activity.id,
+          matterId: activity.caseId,
+          type: activity.type || 'document',
+          action: activity.action || 'Activity recorded',
+          detail: activity.detail || '',
+          user: activity.user?.name || 'System',
+          time: activity.createdAt || 'Recently'
+        }));
+        setMatterActivities(formattedActivities);
+        setError(prev => ({ ...prev, activities: null }));
+      } catch (err) {
+        console.error('Error fetching activities:', err);
+        setError(prev => ({ ...prev, activities: 'Failed to load activities' }));
+        // Use sample data if API fails
+        setMatterActivities([
+          { id: 1, matterId: selectedMatter.id, type: 'document', action: 'Document uploaded', detail: 'Contract_Agreement.pdf', user: 'Sarah Jenkins', time: '2 hours ago' },
+          { id: 2, matterId: selectedMatter.id, type: 'task', action: 'Task completed', detail: 'File motion for extension', user: 'Sarah Jenkins', time: '1 day ago' },
+          { id: 3, matterId: selectedMatter.id, type: 'note', action: 'Note added', detail: 'Client meeting notes', user: 'David Chen', time: '2 days ago' },
+          { id: 4, matterId: selectedMatter.id, type: 'billing', action: 'Time entry added', detail: '2.5 hours - Document review', user: 'Sarah Jenkins', time: '3 days ago' }
+        ]);
+      } finally {
+        setLoading(prev => ({ ...prev, activities: false }));
+      }
+    };
+
+    fetchMatterDocuments();
+    fetchMatterTasks();
+    fetchMatterNotes();
+    fetchMatterActivities();
+  }, [selectedMatter]);
 
   const [newNote, setNewNote] = useState('');
   const fileInputRef = useRef(null);
@@ -159,54 +325,142 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0 && selectedMatter) {
-      setShowUploadModal(false);
-      addNotification('success', `${files[0].name} uploaded successfully`);
+      try {
+        // Create a FormData object to send the file
+        const formData = new FormData();
+        formData.append('document', files[0]);
+        
+        const response = await documentService.uploadDocument(formData);
+        
+        // Add the new document to the list
+        const newDoc = {
+          id: Date.now(),
+          matterId: selectedMatter.id,
+          name: files[0].name,
+          type: files[0].type || 'pdf',
+          size: `${(files[0].size / 1024).toFixed(1)} KB`,
+          uploadedBy: 'You',
+          uploadDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          category: 'Uncategorized'
+        };
+        
+        setMatterDocuments([newDoc, ...matterDocuments]);
+        addNotification('success', 'Document uploaded successfully');
+        setShowUploadModal(false);
+      } catch (error) {
+        console.error('Error uploading document:', error);
+        addNotification('error', 'Failed to upload document');
+      }
     }
   };
 
-  const addNote = () => {
+  const addNote = async () => {
     if (newNote.trim() && selectedMatter) {
-      const note = {
-        id: Date.now(),
-        matterId: selectedMatter.id,
-        content: newNote,
-        author: 'Alex Thompson',
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      };
-      setMatterNotes([note, ...matterNotes]);
-      setNewNote('');
-      addNotification('success', 'Note added');
+      try {
+        // Create a new note via the API
+        const noteData = {
+          caseId: selectedMatter.id,
+          content: newNote
+        };
+        
+        const response = await noteService.createNote(noteData);
+        
+        // Format the response to match our UI format
+        const newNoteFormatted = {
+          id: response.data.id,
+          matterId: selectedMatter.id,
+          content: newNote,
+          author: response.data.author?.name || 'You',
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        };
+        
+        setMatterNotes([newNoteFormatted, ...matterNotes]);
+        setNewNote('');
+        addNotification('success', 'Note added');
+      } catch (error) {
+        console.error('Error adding note:', error);
+        addNotification('error', 'Failed to add note');
+        
+        // Fallback to client-side note creation if API fails
+        const note = {
+          id: Date.now(),
+          matterId: selectedMatter.id,
+          content: newNote,
+          author: 'You',
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        };
+        setMatterNotes([note, ...matterNotes]);
+        setNewNote('');
+      }
     }
   };
 
-  const createMatter = () => {
+  const createMatter = async () => {
     if (!newMatterForm.name.trim() || !newMatterForm.client || !newMatterForm.practiceArea) {
       addNotification('error', 'Please fill in all required fields');
       return;
     }
 
-    const newMatter = {
-      id: Date.now(),
-      number: `MAT-2024-${String(matters.length + 1).padStart(3, '0')}`,
-      name: newMatterForm.name,
-      client: newMatterForm.client,
-      status: newMatterForm.status || 'Open',
-      practiceArea: newMatterForm.practiceArea,
-      responsible: newMatterForm.responsible || 'Unassigned',
-      openDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      lastActivity: 'Just now',
-      balance: 0,
-      description: newMatterForm.description || 'No description provided',
-      tags: []
-    };
+    try {
+      // Create a new matter via the API
+      const matterData = {
+        name: newMatterForm.name,
+        client: newMatterForm.client,
+        practiceArea: newMatterForm.practiceArea,
+        assignedTo: newMatterForm.responsible,
+        status: newMatterForm.status || 'Open',
+        description: newMatterForm.description || 'No description provided'
+      };
+      
+      const response = await caseService.createCase(matterData);
+      
+      // Format the response to match our UI format
+      const newMatter = {
+        id: response.data.id,
+        number: response.data.caseNumber || `MAT-2024-${String(matters.length + 1).padStart(3, '0')}`,
+        name: newMatterForm.name,
+        client: newMatterForm.client,
+        status: newMatterForm.status || 'Open',
+        practiceArea: newMatterForm.practiceArea,
+        responsible: newMatterForm.responsible || 'Unassigned',
+        openDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        lastActivity: 'Just now',
+        balance: 0,
+        description: newMatterForm.description || 'No description provided',
+        tags: []
+      };
 
-    setMatters([newMatter, ...matters]);
-    setNewMatterForm({ name: '', client: '', practiceArea: '', responsible: '', status: 'Open', description: '' });
-    setShowNewMatterModal(false);
-    addNotification('success', `Matter "${newMatter.name}" created successfully`);
+      setMatters([newMatter, ...matters]);
+      setNewMatterForm({ name: '', client: '', practiceArea: '', responsible: '', status: 'Open', description: '' });
+      setShowNewMatterModal(false);
+      addNotification('success', `Matter "${newMatter.name}" created successfully`);
+    } catch (error) {
+      console.error('Error creating matter:', error);
+      addNotification('error', 'Failed to create matter');
+      
+      // Fallback to client-side matter creation if API fails
+      const newMatter = {
+        id: Date.now(),
+        number: `MAT-2024-${String(matters.length + 1).padStart(3, '0')}`,
+        name: newMatterForm.name,
+        client: newMatterForm.client,
+        status: newMatterForm.status || 'Open',
+        practiceArea: newMatterForm.practiceArea,
+        responsible: newMatterForm.responsible || 'Unassigned',
+        openDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        lastActivity: 'Just now',
+        balance: 0,
+        description: newMatterForm.description || 'No description provided',
+        tags: []
+      };
+
+      setMatters([newMatter, ...matters]);
+      setNewMatterForm({ name: '', client: '', practiceArea: '', responsible: '', status: 'Open', description: '' });
+      setShowNewMatterModal(false);
+    }
   };
 
   const selectedMatterDocs = selectedMatter ? matterDocuments.filter((d) => d.matterId === selectedMatter.id) : [];
@@ -408,7 +662,7 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
         </div>
       </div>
 
-      {selectedMatter && (
+      {/* {selectedMatter && (
         <div className="matter-detail-panel" style={{ width: 480, borderLeft: `1px solid ${colors.border}`, backgroundColor: colors.card, display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -780,9 +1034,9 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
             </button>
           </div>
         </div>
-      )}
+      )} */}
 
-      {showUploadModal && (
+      {/* {showUploadModal && (
         <div onClick={() => setShowUploadModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 24, width: 420, maxWidth: '90%', boxShadow: '0 25px 50px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -821,7 +1075,7 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {showNewMatterModal && (
         <div onClick={() => setShowNewMatterModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150 }}>

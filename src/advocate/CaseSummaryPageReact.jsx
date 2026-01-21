@@ -28,32 +28,82 @@ export default function CaseSummaryPageReact({ isDark = false, accentColor = '#4
   const colors = getThemeColors(isDark, accentColor);
 
   return (
-    <div style={{ padding: 24, backgroundColor: colors.bg, color: colors.text, minHeight: '100vh' }}>
-      <div style={{ textAlign: 'center', padding: 40 }}>
-        <div style={{ width: 80, height: 80, borderRadius: 20, backgroundColor: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-          <Briefcase size={40} style={{ color: accentColor }} />
-        </div>
-        <h1 style={{ fontSize: 28, fontWeight: 600, color: colors.text, margin: '0 0 16px 0' }}>Case Summary</h1>
-        <p style={{ fontSize: 16, color: colors.textSecondary, margin: '0 0 8px 0' }}>View and manage case details, documents, and timeline</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
-          <div style={{ padding: 20, backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, minWidth: 200, textAlign: 'center' }}>
-            <Scale size={32} style={{ color: accentColor, marginBottom: 12 }} />
-            <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>Case Information</p>
-          </div>
-          <div style={{ padding: 20, backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, minWidth: 200, textAlign: 'center' }}>
-            <FileText size={32} style={{ color: accentColor, marginBottom: 12 }} />
-            <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>Documents</p>
-          </div>
-          <div style={{ padding: 20, backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, minWidth: 200, textAlign: 'center' }}>
-            <Calendar size={32} style={{ color: accentColor, marginBottom: 12 }} />
-            <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>Timeline</p>
-          </div>
-          <div style={{ padding: 20, backgroundColor: colors.card, borderRadius: 12, border: `1px solid ${colors.border}`, minWidth: 200, textAlign: 'center' }}>
-            <Users size={32} style={{ color: accentColor, marginBottom: 12 }} />
-            <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>Parties</p>
-          </div>
-        </div>
-      </div>
+    <div
+  className="min-h-screen p-6"
+  style={{ backgroundColor: colors.bg, color: colors.text }}
+>
+  <div className="text-center py-10 px-4">
+
+    {/* Icon Box */}
+    <div
+      className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+      style={{ backgroundColor: colors.accentLight }}
+    >
+      <Briefcase size={40} style={{ color: accentColor }} />
     </div>
+
+    {/* Heading */}
+    <h1
+      className="text-2xl sm:text-3xl font-semibold mb-4"
+      style={{ color: colors.text }}
+    >
+      Case Summary
+    </h1>
+
+    <p
+      className="text-sm sm:text-base mb-2"
+      style={{ color: colors.textSecondary }}
+    >
+      View and manage case details, documents, and timeline
+    </p>
+
+    {/* Cards Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 max-w-5xl mx-auto">
+
+      {/* Card */}
+      <div
+        className="p-5 rounded-xl border text-center"
+        style={{ backgroundColor: colors.card, borderColor: colors.border }}
+      >
+        <Scale size={32} style={{ color: accentColor }} className="mx-auto mb-3" />
+        <p className="text-sm font-medium" style={{ color: colors.text }}>
+          Case Information
+        </p>
+      </div>
+
+      <div
+        className="p-5 rounded-xl border text-center"
+        style={{ backgroundColor: colors.card, borderColor: colors.border }}
+      >
+        <FileText size={32} style={{ color: accentColor }} className="mx-auto mb-3" />
+        <p className="text-sm font-medium" style={{ color: colors.text }}>
+          Documents
+        </p>
+      </div>
+
+      <div
+        className="p-5 rounded-xl border text-center"
+        style={{ backgroundColor: colors.card, borderColor: colors.border }}
+      >
+        <Calendar size={32} style={{ color: accentColor }} className="mx-auto mb-3" />
+        <p className="text-sm font-medium" style={{ color: colors.text }}>
+          Timeline
+        </p>
+      </div>
+
+      <div
+        className="p-5 rounded-xl border text-center"
+        style={{ backgroundColor: colors.card, borderColor: colors.border }}
+      >
+        <Users size={32} style={{ color: accentColor }} className="mx-auto mb-3" />
+        <p className="text-sm font-medium" style={{ color: colors.text }}>
+          Parties
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
   );
 }
