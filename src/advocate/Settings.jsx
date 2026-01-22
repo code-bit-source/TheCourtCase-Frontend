@@ -2,7 +2,9 @@
 
 import React, { useState, useRef, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services';
+import { getThemeColors } from '../utils/themeColors';
 import {
   Scale, LayoutDashboard, FileText, MessageSquare,
   Calendar, Settings, Bell,
@@ -26,29 +28,6 @@ const ThemeContext = createContext({
 });
 
 const useTheme = () => useContext(ThemeContext);
-
-const getThemeColors = (isDark, accentColor) => ({
-  bg: isDark ? '#0f0f1a' : '#ffffff',
-  bgSecondary: isDark ? '#1a1a2e' : '#fafafa',
-  bgTertiary: isDark ? '#16213e' : '#f5f5f5',
-  bgHover: isDark ? '#252540' : '#f0f0f0',
-  text: isDark ? '#ffffff' : '#1f1f1f',
-  textSecondary: isDark ? '#a0a0a0' : '#808080',
-  textMuted: isDark ? '#707070' : '#b0b0b0',
-  border: isDark ? '#2d2d44' : '#e8e8e8',
-  borderLight: isDark ? '#252540' : '#f0f0f0',
-  card: isDark ? '#1a1a2e' : '#ffffff',
-  cardHover: isDark ? '#252540' : '#fafafa',
-  accent: accentColor,
-  accentLight: isDark ? `${accentColor}30` : `${accentColor}15`,
-  success: '#00c853',
-  warning: '#ff9500',
-  error: '#eb4d3d',
-  sidebar: isDark ? '#0f0f1a' : '#ffffff',
-  header: isDark ? '#0f0f1a' : '#ffffff',
-  input: isDark ? '#1a1a2e' : '#ffffff',
-  inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
-});
 
 const styles = `
   .settings-page * { box-sizing: border-box; }
@@ -97,23 +76,69 @@ const styles = `
   .settings-nav-item:hover { background: #f5f5f5; }
   .settings-nav-item.active { background: rgba(71, 114, 250, 0.1); color: #4772fa; font-weight: 500; }
 
+  @media (max-width: 1024px) {
+    .settings-layout { flex-direction: column !important; }
+    .settings-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid #e8e8e8 !important; }
+    .settings-sidebar-nav { flex-direction: row !important; overflow-x: auto !important; padding: 8px !important; gap: 4px !important; }
+    .settings-nav-item { padding: 10px 14px !important; white-space: nowrap !important; flex-shrink: 0 !important; font-size: 12px !important; }
+  }
+
   @media (max-width: 768px) {
+    .settings-page { font-size: 13px; }
     .desktop-sidebar { display: none !important; }
     .mobile-bottom-nav { display: flex; }
     .mobile-menu-btn { display: flex; }
     .header-search { display: none !important; }
     .header-extras { display: none !important; }
     .side-panel { width: 100vw; }
-    .settings-layout { flex-direction: column !important; }
-    .settings-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid #e8e8e8 !important; }
-    .settings-sidebar-nav { flex-direction: row !important; overflow-x: auto !important; padding: 8px !important; gap: 4px !important; }
-    .settings-nav-item { padding: 10px 14px !important; white-space: nowrap !important; flex-shrink: 0 !important; }
-    .settings-nav-item span { display: none !important; }
-    .settings-content { padding: 16px !important; }
-    .setting-row { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
-    .theme-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
-    .theme-grid button { padding: 14px 8px !important; }
+    .settings-layout { flex-direction: column !important; position: relative; }
+    .settings-sidebar { 
+      width: 100% !important; 
+      border-right: none !important; 
+      border-bottom: 1px solid #e8e8e8 !important; 
+      padding: 0 !important;
+      position: fixed !important;
+      left: 0 !important;
+      top: 56px !important;
+      bottom: 0 !important;
+      z-index: 50 !important;
+      transform: translateX(-100%) !important;
+      transition: transform 0.3s ease !important;
+      max-width: 280px !important;
+    }
+    .settings-sidebar.open {
+      transform: translateX(0) !important;
+    }
+    .mobile-overlay {
+      display: block !important;
+    }
+    .mobile-close-btn {
+      display: flex !important;
+    }
+    .settings-sidebar-nav { flex-direction: row !important; overflow-x: auto !important; padding: 8px !important; gap: 4px !important; justify-content: flex-start !important; }
+    .settings-nav-item { padding: 8px 12px !important; white-space: nowrap !important; flex-shrink: 0 !important; font-size: 12px !important; }
+    .settings-content { padding: 16px !important; width: 100% !important; }
+    .settings-content h3 { font-size: 16px !important; margin: 0 0 16px 0 !important; }
+    .setting-row { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; padding: 12px 0 !important; }
+    .setting-row > div:first-child { width: 100% !important; }
+    .setting-row > div:last-child { width: 100% !important; }
+    .setting-row input, .setting-row button, .setting-row select { width: 100% !important; }
+    .theme-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+    .theme-grid button { padding: 12px 8px !important; font-size: 12px !important; }
     .shortcut-row { flex-wrap: wrap !important; }
+    .accent-color-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+  }
+
+  @media (max-width: 480px) {
+    .settings-page { font-size: 12px; }
+    .settings-content { padding: 12px !important; }
+    .settings-content h3 { font-size: 14px !important; margin: 0 0 12px 0 !important; }
+    .setting-row { padding: 10px 0 !important; }
+    .setting-row p { font-size: 12px !important; }
+    .setting-row input, .setting-row button, .setting-row select { padding: 8px 10px !important; font-size: 13px !important; }
+    .theme-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
+    .accent-color-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+    .modal { width: 95% !important; max-width: 95% !important; }
   }
 `;
 
@@ -316,106 +341,21 @@ function ProductivityHeader({ addNotification, clientNotifications, onOpenMobile
   );
 }
 
-function Sidebar({ isExpanded, toggleSidebar }) {
-  const { isDark, accentColor } = useTheme();
-  const colors = getThemeColors(isDark, accentColor);
-  const pathname = usePathname();
 
-  const navItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { id: 'matters', icon: Scale, label: 'Matters', href: '/matters' },
-    { id: 'tasks', icon: ListTodo, label: 'Tasks', href: '/tasks' },
-    { id: 'calendar', icon: Calendar, label: 'Calendar', href: '/calendar' },
-    { id: 'documents', icon: FileText, label: 'Documents', href: '/documents' },
-    { id: 'billing', icon: CreditCard, label: 'Payments', href: '/billing' },
-    { id: 'messages', icon: MessageSquare, label: 'Messages', href: '/messages' },
-    { id: 'settings', icon: Settings, label: 'Settings', href: '/settings' }
-  ];
 
-  const getActiveView = () => {
-    if (pathname === '/') return 'dashboard';
-    const path = pathname.split('/')[1];
-    return path || 'dashboard';
-  };
-
-  const activeView = getActiveView();
-
-  return (
-    <aside className="sidebar-transition desktop-sidebar" style={{ width: isExpanded ? 240 : 68, borderRight: `1px solid ${colors.border}`, backgroundColor: colors.sidebar, flexDirection: 'column', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
-      <div style={{ padding: isExpanded ? '16px' : '16px 10px', borderBottom: `1px solid ${colors.borderLight}`, display: 'flex', alignItems: 'center', gap: 12, minHeight: 64 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${accentColor} 0%, #7c3aed 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Scale size={20} style={{ color: '#fff' }} /></div>
-        {isExpanded && <div><h1 style={{ fontSize: 16, fontWeight: 700, color: colors.text, margin: 0 }}>TheCourtCase</h1></div>}
-      </div>
-      <nav className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, padding: isExpanded ? '12px 10px' : '12px 6px', overflowY: 'auto' }}>
-        {navItems.map((item) => (
-          <Link key={item.id} href={item.href} className={`sidebar-nav-item ${activeView === item.id ? 'active' : ''}`} style={{ justifyContent: isExpanded ? 'flex-start' : 'center', color: activeView === item.id ? accentColor : colors.textSecondary }}>
-            <item.icon size={20} style={{ flexShrink: 0 }} />
-            {isExpanded && <span className="nav-label">{item.label}</span>}
-            {!isExpanded && <span className="sidebar-tooltip">{item.label}</span>}
-          </Link>
-        ))}
-      </nav>
-      <div style={{ padding: 10, borderTop: `1px solid ${colors.borderLight}` }}>
-        <button onClick={toggleSidebar} style={{ width: '100%', padding: '10px', background: 'transparent', border: `1px solid ${colors.border}`, borderRadius: 8, cursor: 'pointer', color: colors.textSecondary, display: 'flex', alignItems: 'center', justifyContent: isExpanded ? 'flex-start' : 'center', gap: 10 }}>
-          {isExpanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-          {isExpanded && <span>Collapse</span>}
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-function MobileSidebarDrawer({ isOpen, onClose }) {
-  const { isDark, accentColor } = useTheme();
-  const colors = getThemeColors(isDark, accentColor);
-  const pathname = usePathname();
-  
-  const navItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { id: 'matters', icon: Scale, label: 'Matters', href: '/matters' },
-    { id: 'tasks', icon: ListTodo, label: 'Tasks', href: '/tasks' },
-    { id: 'calendar', icon: Calendar, label: 'Calendar', href: '/calendar' },
-    { id: 'documents', icon: FileText, label: 'Documents', href: '/documents' },
-    { id: 'billing', icon: CreditCard, label: 'Payments', href: '/billing' },
-    { id: 'messages', icon: MessageSquare, label: 'Messages', href: '/messages' },
-    { id: 'settings', icon: Settings, label: 'Settings', href: '/settings' }
-  ];
-
-  const getActiveView = () => {
-    if (pathname === '/') return 'dashboard';
-    const path = pathname.split('/')[1];
-    return path || 'dashboard';
-  };
-
-  const activeView = getActiveView();
-
-  return (
-    <>
-      <div className={`mobile-sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={onClose} />
-      <div className={`mobile-sidebar-drawer ${isOpen ? 'open' : ''}`} style={{ background: colors.sidebar }}>
-        <div style={{ padding: '16px', borderBottom: `1px solid ${colors.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Scale size={20} style={{ color: accentColor }} /> <h1 style={{ fontSize: 16, fontWeight: 700, color: colors.text, margin: 0 }}>TheCourtCase</h1></div>
-          <button onClick={onClose} style={{ padding: 8, background: 'transparent', border: 'none' }}><X size={20} style={{ color: colors.textSecondary }} /></button>
-        </div>
-        <nav style={{ padding: '12px' }}>
-          {navItems.map((item) => (
-            <Link key={item.id} href={item.href} onClick={onClose} className={`sidebar-nav-item ${activeView === item.id ? 'active' : ''}`} style={{ padding: '12px 14px', color: activeView === item.id ? accentColor : colors.textSecondary, marginBottom: 2 }}>
-              <item.icon size={20} />
-              <span style={{ fontSize: 15 }}>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-      </div>
-    </>
-  );
-}
-
-function SettingsContent({ addNotification }) {
+function SettingsContent({ addNotification, isMobileSidebarOpen, setIsMobileSidebarOpen }) {
+  const { user } = useAuth();
   const { theme, setTheme, accentColor, setAccentColor, isDark } = useTheme();
   const colors = getThemeColors(isDark, accentColor);
   const [activeTab, setActiveTab] = useState('account');
-  const [displayName, setDisplayName] = useState('Alex Thompson');
-  const [email, setEmail] = useState('alex.thompson@email.com');
+  const [displayName, setDisplayName] = useState(user?.name || 'Alex Thompson');
+  const [email, setEmail] = useState(user?.email || 'alex.thompson@email.com');
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [language, setLanguage] = useState('English');
   const [dateFormat, setDateFormat] = useState('MM/DD/YYYY');
   const [timeFormat, setTimeFormat] = useState('12-hour');
@@ -469,6 +409,73 @@ function SettingsContent({ addNotification }) {
     </select>
   );
 
+  const handleSetPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      addNotification('error', 'Please fill in all password fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      addNotification('error', 'Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      addNotification('error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      const response = await authService.setPassword(newPassword, confirmPassword);
+      if (response.success) {
+        addNotification('success', 'Password set successfully!');
+        setShowSetPasswordModal(false);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        addNotification('error', response.message || 'Failed to set password');
+      }
+    } catch (error) {
+      addNotification('error', 'Error setting password');
+      console.error(error);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      addNotification('error', 'Please fill in all password fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      addNotification('error', 'New passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      addNotification('error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      const response = await authService.changePassword(currentPassword, newPassword, confirmPassword);
+      if (response.success) {
+        addNotification('success', 'Password changed successfully!');
+        setShowChangePasswordModal(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        addNotification('error', response.message || 'Failed to change password');
+      }
+    } catch (error) {
+      addNotification('error', 'Error changing password');
+      console.error(error);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
     addNotification('success', `Theme changed to ${newTheme}`);
@@ -511,10 +518,22 @@ function SettingsContent({ addNotification }) {
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: '10px 14px', fontSize: 14, border: `1px solid ${colors.inputBorder}`, borderRadius: 8, width: 220, outline: 'none', boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
             </SettingRow>
 
-            <SettingRow label="Password" desc="Last changed 30 days ago">
-              <button onClick={() => addNotification('info', 'Password reset email sent')} style={{ padding: '10px 20px', fontSize: 14, border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.card, cursor: 'pointer', color: colors.text, fontWeight: 500 }}>
-                Change Password
-              </button>
+            <SettingRow label="Password" desc={user?.hasPassword ? "Last changed 30 days ago" : "Set a password to secure your account"}>
+              {user?.hasPassword ? (
+                <button 
+                  onClick={() => setShowChangePasswordModal(true)}
+                  style={{ padding: '10px 20px', fontSize: 14, border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.card, cursor: 'pointer', color: colors.text, fontWeight: 500 }}
+                >
+                  Change Password
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setShowSetPasswordModal(true)}
+                  style={{ padding: '10px 20px', fontSize: 14, border: `1px solid ${accentColor}`, borderRadius: 8, backgroundColor: colors.accentLight, cursor: 'pointer', color: accentColor, fontWeight: 500 }}
+                >
+                  Set Password
+                </button>
+              )}
             </SettingRow>
 
             <SettingRow label="Two-Factor Authentication" desc="Add an extra layer of security">
@@ -866,17 +885,197 @@ function SettingsContent({ addNotification }) {
     }
   };
 
+  // Set Password Modal
+  const SetPasswordModal = () => (
+    <>
+      {showSetPasswordModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div className="modal" style={{ backgroundColor: colors.card, borderRadius: 12, padding: '24px', width: '100%', maxWidth: 400, boxShadow: '0 20px 25px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button 
+              onClick={() => {
+                setShowSetPasswordModal(false);
+                setNewPassword('');
+                setConfirmPassword('');
+              }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={20} style={{ color: colors.textSecondary }} />
+            </button>
+            
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: '0 0 8px 0', paddingRight: 30 }}>Set Password</h2>
+            <p style={{ fontSize: 14, color: colors.textSecondary, margin: '0 0 24px 0' }}>Create a password to secure your account</p>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 6 }}>New Password</label>
+              <input 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter password"
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.input, color: colors.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 6 }}>Confirm Password</label>
+              <input 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.input, color: colors.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              />
+              <p style={{ fontSize: 12, color: colors.textSecondary, margin: '6px 0 0 0' }}>Must be at least 6 characters</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexDirection: 'row' }}>
+              <button
+                onClick={() => {
+                  setShowSetPasswordModal(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+                style={{ flex: 1, padding: '10px 16px', border: `1px solid ${colors.border}`, borderRadius: 8, backgroundColor: colors.card, cursor: 'pointer', color: colors.text, fontWeight: 500, fontSize: 14 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSetPassword}
+                disabled={passwordLoading}
+                style={{ flex: 1, padding: '10px 16px', border: 'none', borderRadius: 8, backgroundColor: accentColor, cursor: passwordLoading ? 'not-allowed' : 'pointer', color: '#fff', fontWeight: 500, fontSize: 14, opacity: passwordLoading ? 0.6 : 1 }}
+              >
+                {passwordLoading ? 'Setting...' : 'Set Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // Change Password Modal
+  const ChangePasswordModal = () => (
+    <>
+      {showChangePasswordModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div className="modal" style={{ backgroundColor: colors.card, borderRadius: 12, padding: '24px', width: '100%', maxWidth: 400, boxShadow: '0 20px 25px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button 
+              onClick={() => {
+                setShowChangePasswordModal(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+              }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={20} style={{ color: colors.textSecondary }} />
+            </button>
+            
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: '0 0 8px 0', paddingRight: 30 }}>Change Password</h2>
+            <p style={{ fontSize: 14, color: colors.textSecondary, margin: '0 0 24px 0' }}>Enter your current password and a new password</p>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 6 }}>Current Password</label>
+              <input 
+                type="password" 
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.input, color: colors.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 6 }}>New Password</label>
+              <input 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.input, color: colors.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 6 }}>Confirm New Password</label>
+              <input 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${colors.inputBorder}`, borderRadius: 8, backgroundColor: colors.input, color: colors.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              />
+              <p style={{ fontSize: 12, color: colors.textSecondary, margin: '6px 0 0 0' }}>Must be at least 6 characters</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexDirection: 'row' }}>
+              <button
+                onClick={() => {
+                  setShowChangePasswordModal(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+                style={{ flex: 1, padding: '10px 16px', border: `1px solid ${colors.border}`, borderRadius: 8, backgroundColor: colors.card, cursor: 'pointer', color: colors.text, fontWeight: 500, fontSize: 14 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleChangePassword}
+                disabled={passwordLoading}
+                style={{ flex: 1, padding: '10px 16px', border: 'none', borderRadius: 8, backgroundColor: accentColor, cursor: passwordLoading ? 'not-allowed' : 'pointer', color: '#fff', fontWeight: 500, fontSize: 14, opacity: passwordLoading ? 0.6 : 1 }}
+              >
+                {passwordLoading ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
-    <div className="settings-layout" style={{ display: 'flex', height: '100%', backgroundColor: colors.bg }}>
-      <div className="settings-sidebar" style={{ width: 260, borderRight: `1px solid ${colors.border}`, backgroundColor: colors.bgSecondary, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '20px', borderBottom: `1px solid ${colors.border}` }}>
+    <div className="settings-layout" style={{ display: 'flex', height: '100%', backgroundColor: colors.bg, position: 'relative' }}>
+      {/* Mobile sidebar overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40, display: 'none' }}
+          className="mobile-overlay"
+        />
+      )}
+      
+      {/* Sidebar - shows normally on desktop, shows as drawer on mobile */}
+      <div 
+        className={`settings-sidebar ${isMobileSidebarOpen ? 'open' : ''}`}
+        style={{ 
+          width: 260, 
+          borderRight: `1px solid ${colors.border}`, 
+          backgroundColor: colors.bgSecondary, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          minHeight: '100vh',
+          position: 'relative'
+        }}
+      >
+        <div style={{ padding: '20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>Settings</h2>
+          <button 
+            onClick={() => setIsMobileSidebarOpen(false)}
+            style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            className="mobile-close-btn"
+          >
+            <X size={20} style={{ color: colors.text }} />
+          </button>
         </div>
         <nav className="settings-sidebar-nav custom-scrollbar" style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setIsMobileSidebarOpen(false);
+              }}
               className={`settings-nav-item ${activeTab === tab.id ? 'active' : ''}`}
               style={{
                 backgroundColor: activeTab === tab.id ? colors.accentLight : 'transparent',
@@ -893,14 +1092,17 @@ function SettingsContent({ addNotification }) {
         </div>
       </div>
 
-      <div className="settings-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 32 }}>
-        <div style={{ maxWidth: 640 }}>
+      <div className="settings-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 32, minWidth: 0 }}>
+        <div style={{ maxWidth: 640, width: '100%' }}>
           <h3 style={{ fontSize: 18, fontWeight: 600, color: colors.text, marginBottom: 24, margin: '0 0 24px 0' }}>
             {tabs.find((t) => t.id === activeTab)?.label}
           </h3>
           {renderContent()}
         </div>
       </div>
+      
+      <SetPasswordModal />
+      <ChangePasswordModal />
     </div>
   );
 }
@@ -967,7 +1169,7 @@ export default function SettingsPage() {
 
           <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ flex: 1, overflow: 'hidden', paddingBottom: 70 }}>
-              <SettingsContent addNotification={addNotification} />
+              <SettingsContent addNotification={addNotification} isMobileSidebarOpen={isMobileSidebarOpen} setIsMobileSidebarOpen={setIsMobileSidebarOpen} />
             </div>
           </main>
         </div>

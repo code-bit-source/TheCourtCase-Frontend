@@ -16,6 +16,10 @@ const authService = {
   login: async (email, password) => {
     try {
       const response = await api.post('/api/auth/login', { email, password });
+      // Save token to localStorage
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
       return response.data;
     } catch (error) {
       console.log('Login error:', error);
@@ -27,6 +31,10 @@ const authService = {
   signup: async (name, email, password, role) => {
     try {
       const response = await api.post('/api/auth/signup', { name, email, password, role });
+      // Save token to localStorage
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
       return response.data;
     } catch (error) {
       console.log('Signup error:', error);
@@ -38,6 +46,10 @@ const authService = {
   googleLogin: async (credential) => {
     try {
       const response = await api.post('/api/auth/google/login', { credential });
+      // Save token to localStorage
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
       return response.data;
     } catch (error) {
       console.log('Google login error:', error);
@@ -49,6 +61,10 @@ const authService = {
   googleSignup: async (credential, role) => {
     try {
       const response = await api.post('/api/auth/google/signup', { credential, role });
+      // Save token to localStorage
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
       return response.data;
     } catch (error) {
       console.log('Google signup error:', error);
@@ -60,6 +76,8 @@ const authService = {
   logout: async () => {
     try {
       const response = await api.post('/api/auth/logout', {});
+      // Remove token from localStorage
+      localStorage.removeItem('token');
       return response.data;
     } catch (error) {
       console.log('Logout error:', error);

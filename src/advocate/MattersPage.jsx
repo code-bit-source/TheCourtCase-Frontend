@@ -1,17 +1,14 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  caseService, 
-  documentService, 
-  taskService, 
-  noteService, 
-  activityService 
-} from '../services';
 import {
   Scale, Search, Plus, Filter, Grid3X3, List, MoreVertical,
   X, User, Briefcase, Phone, Mail, FileText, CheckCircle2,
   ListTodo, History, Edit3, Share2, DollarSign, Timer,
-  Upload, Download, Eye, Folder, ChevronDown, Link, Trash2
+  Upload, Download, Eye, Folder, ChevronDown, Link, Trash2, AlertCircle
 } from 'lucide-react';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
 const getThemeColors = (isDark, accentColor) => ({
   bg: isDark ? '#0f0f1a' : '#ffffff',
@@ -36,10 +33,9 @@ const getThemeColors = (isDark, accentColor) => ({
   inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
 });
 
-export default function MattersPage({ addNotification = () => {}, setActiveView = () => {}, isDark = false, accentColor = '#4772fa' }) {
+export default function MattersPage({ addNotification = () => { }, setActiveView = () => { }, isDark = false, accentColor = '#4772fa' }) {
   const colors = getThemeColors(isDark, accentColor);
-  
-  // State for data from API
+
   const [matters, setMatters] = useState([]);
   const [loading, setLoading] = useState({
     matters: false,
@@ -67,28 +63,52 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sortBy, setSortBy] = useState('lastActivity');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [matterContextMenu, setMatterContextMenu] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [showIdHelper, setShowIdHelper] = useState(false);
 
   const [newMatterForm, setNewMatterForm] = useState({
-    name: '',
-    client: '',
-    practiceArea: '',
-    responsible: '',
-    status: 'Open',
-    description: ''
+    title: '',
+    description: '',
+    category: '',
+    subcategory: '',
+    clientId: '',
+    advocateId: '',
+    paralegalId: '',
+    courtName: '',
+    courtLocation: '',
+    judgeAssigned: '',
+    filingDate: '',
+    nextHearing: '',
+    opposingParty: '',
+    caseAmount: '',
+    priority: 'Medium',
+    tags: '',
+    status: 'Open'
   });
 
   const [showEditMatterModal, setShowEditMatterModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddTimeEntryModal, setShowAddTimeEntryModal] = useState(false);
   const [editMatterForm, setEditMatterForm] = useState({
-    name: '',
-    client: '',
-    clientPhone: '',
-    clientEmail: '',
-    practiceArea: '',
-    responsible: '',
-    status: '',
-    description: ''
+    title: '',
+    description: '',
+    category: '',
+    subcategory: '',
+    clientId: '',
+    advocateId: '',
+    paralegalId: '',
+    courtName: '',
+    courtLocation: '',
+    judgeAssigned: '',
+    filingDate: '',
+    nextHearing: '',
+    opposingParty: '',
+    caseAmount: '',
+    priority: 'Medium',
+    tags: '',
+    status: 'Open'
   });
   const [newTimeEntry, setNewTimeEntry] = useState({
     description: '',
@@ -98,192 +118,129 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
   });
   const [shareEmail, setShareEmail] = useState('');
 
-  // State for matter-related data
   const [matterDocuments, setMatterDocuments] = useState([]);
   const [matterTasks, setMatterTasks] = useState([]);
   const [matterNotes, setMatterNotes] = useState([]);
   const [matterActivities, setMatterActivities] = useState([]);
 
-  // Fetch data from API
   useEffect(() => {
-    const fetchMatters = async () => {
-      setLoading(prev => ({ ...prev, matters: true }));
-      try {
-        const response = await caseService.getCases();
-        // Transform the data to match the expected format
-        const formattedMatters = response.data.map(matter => ({
-          id: matter.id,
-          number: matter.caseNumber || `MAT-${new Date().getFullYear()}-${String(matter.id).padStart(3, '0')}`,
-          name: matter.name,
-          client: matter.client?.name || 'Unknown Client',
-          clientPhone: matter.client?.phone || '',
-          clientEmail: matter.client?.email || '',
-          status: matter.status || 'Open',
-          practiceArea: matter.practiceArea || 'General',
-          responsible: matter.assignedTo?.name || 'Unassigned',
-          openDate: new Date(matter.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          lastActivity: matter.lastActivity || 'No recent activity',
-          balance: matter.balance || 0,
-          description: matter.description || 'No description provided',
-          tags: matter.tags || []
-        }));
-        setMatters(formattedMatters);
-        setError(prev => ({ ...prev, matters: null }));
-      } catch (err) {
-        console.error('Error fetching matters:', err);
-        setError(prev => ({ ...prev, matters: 'Failed to load matters' }));
-        // Use sample data if API fails
-        setMatters([
-          { id: 1, number: 'MAT-2024-001', name: 'Thompson vs. Global Corp', client: 'Alex Thompson', clientPhone: '+1 (555) 123-4567', clientEmail: 'alex.thompson@email.com', status: 'Open', practiceArea: 'Corporate Litigation', responsible: 'Sarah Jenkins', openDate: 'Jan 12, 2024', lastActivity: '2 hours ago', balance: 2750, description: 'Contract dispute regarding breach of service agreement', tags: ['Priority', 'Trial'] },
-          { id: 2, number: 'MAT-2024-002', name: 'Miller Estate Planning', client: 'James Miller', clientPhone: '+1 (555) 234-5678', clientEmail: 'james.miller@email.com', status: 'Open', practiceArea: 'Estate Planning', responsible: 'Michael Brown', openDate: 'Feb 05, 2024', lastActivity: '1 day ago', balance: 5200, description: 'Comprehensive estate planning including will and trust', tags: ['VIP'] },
-          { id: 3, number: 'MAT-2024-003', name: 'Davis Property Acquisition', client: 'Emily Davis', clientPhone: '+1 (555) 345-6789', clientEmail: 'emily.davis@email.com', status: 'Open', practiceArea: 'Real Estate', responsible: 'Sarah Jenkins', openDate: 'Feb 18, 2024', lastActivity: '3 days ago', balance: 0, description: 'Commercial property acquisition and due diligence', tags: [] },
-          { id: 4, number: 'MAT-2023-089', name: 'Wilson Trademark Registration', client: 'Robert Wilson', clientPhone: '+1 (555) 456-7890', clientEmail: 'robert.wilson@email.com', status: 'Closed', practiceArea: 'Intellectual Property', responsible: 'Emily Watson', openDate: 'Nov 20, 2023', lastActivity: '2 weeks ago', balance: 0, description: 'Trademark registration for tech startup brand', tags: ['Completed'] },
-          { id: 5, number: 'MAT-2024-004', name: 'Johnson Family Trust', client: 'Patricia Johnson', clientPhone: '+1 (555) 567-8901', clientEmail: 'patricia.johnson@email.com', status: 'Pending', practiceArea: 'Estate Planning', responsible: 'Michael Brown', openDate: 'Mar 01, 2024', lastActivity: '5 days ago', balance: 3500, description: 'Family trust establishment and asset transfer', tags: ['Review'] },
-          { id: 6, number: 'MAT-2024-005', name: 'Tech Solutions IP Dispute', client: 'Tech Solutions Inc.', clientPhone: '+1 (555) 678-9012', clientEmail: 'legal@techsolutions.com', status: 'Open', practiceArea: 'Intellectual Property', responsible: 'James Lee', openDate: 'Mar 10, 2024', lastActivity: '1 hour ago', balance: 8500, description: 'Patent infringement case against competitor', tags: ['Priority', 'Litigation'] },
-          { id: 7, number: 'MAT-2024-006', name: 'Anderson Divorce Settlement', client: 'Lisa Anderson', clientPhone: '+1 (555) 789-0123', clientEmail: 'lisa.anderson@email.com', status: 'Open', practiceArea: 'Family Law', responsible: 'Emily Watson', openDate: 'Mar 12, 2024', lastActivity: '4 hours ago', balance: 1200, description: 'Uncontested divorce with asset division', tags: [] },
-          { id: 8, number: 'MAT-2023-045', name: 'Brown Construction Contract', client: 'Brown & Sons LLC', clientPhone: '+1 (555) 890-1234', clientEmail: 'contact@brownsons.com', status: 'Closed', practiceArea: 'Corporate', responsible: 'Sarah Jenkins', openDate: 'Aug 15, 2023', lastActivity: '1 month ago', balance: 0, description: 'Construction contract review and negotiation', tags: ['Completed'] }
-        ]);
-      } finally {
-        setLoading(prev => ({ ...prev, matters: false }));
-      }
-    };
-
-    fetchMatters();
+    fetchCases();
   }, []);
 
-  // Fetch matter-specific data when a matter is selected
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const response = await fetch(`${API_BASE_URL}/protected/users`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.log('Could not fetch users list');
+        return;
+      }
+      
+      const data = await response.json();
+      setUsers(data.users || []);
+    } catch (err) {
+      console.log('Users list not available - use MongoDB ObjectId manually');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const fetchCases = async () => {
+    try {
+      setLoading(prev => ({ ...prev, matters: true }));
+      const response = await fetch(`${API_BASE_URL}/cases`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch cases');
+      
+      const data = await response.json();
+      
+      // Transform backend cases to frontend format
+      const transformedCases = (data.cases || []).map(caseData => ({
+        id: caseData._id,
+        number: caseData.caseNumber || `CASE-${caseData._id.slice(-6)}`,
+        name: caseData.title,
+        description: caseData.description || '',
+        client: caseData.client?.name || 'Unknown Client',
+        clientId: caseData.client?._id,
+        clientPhone: caseData.client?.phone || '',
+        clientEmail: caseData.client?.email || '',
+        category: caseData.category || '',
+        subCategory: caseData.subCategory || '',
+        practiceArea: caseData.category || '',
+        responsible: caseData.advocate?.name || 'Unassigned',
+        advocateId: caseData.advocate?._id,
+        paralegalId: caseData.paralegals?.[0]?._id,
+        courtName: caseData.courtName || '',
+        courtLocation: caseData.courtLocation || '',
+        judgeAssigned: caseData.judgeAssigned || '',
+        filingDate: caseData.filingDate || '',
+        nextHearing: caseData.nextHearingDate || '',
+        opposingParty: caseData.opposingParty || '',
+        caseAmount: caseData.caseValue || 0,
+        priority: caseData.priority || 'medium',
+        tags: caseData.tags || [],
+        status: caseData.status === 'active' ? 'Open' : caseData.status === 'closed' ? 'Closed' : 'Pending',
+        openDate: new Date(caseData.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        lastActivity: 'Just added',
+        balance: 0,
+        createdAt: caseData.createdAt
+      }));
+      
+      setMatters(transformedCases);
+      setError(prev => ({ ...prev, matters: null }));
+    } catch (err) {
+      console.error('Error fetching cases:', err);
+      setError(prev => ({ ...prev, matters: err.message }));
+      addNotification('error', 'Failed to load cases');
+    } finally {
+      setLoading(prev => ({ ...prev, matters: false }));
+    }
+  };
+
   useEffect(() => {
     if (!selectedMatter) return;
 
-    const fetchMatterDocuments = async () => {
-      setLoading(prev => ({ ...prev, documents: true }));
-      try {
-        const response = await documentService.getDocuments({ caseId: selectedMatter.id });
-        // Transform the data to match the expected format
-        const formattedDocs = response.data.map(doc => ({
-          id: doc.id,
-          matterId: doc.caseId,
-          name: doc.name,
-          type: doc.fileType || 'pdf',
-          size: doc.size || '0 KB',
-          uploadedBy: doc.uploadedBy?.name || 'Unknown',
-          uploadDate: new Date(doc.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          category: doc.category || 'Uncategorized'
-        }));
-        setMatterDocuments(formattedDocs);
-        setError(prev => ({ ...prev, documents: null }));
-      } catch (err) {
-        console.error('Error fetching documents:', err);
-        setError(prev => ({ ...prev, documents: 'Failed to load documents' }));
-        // Use sample data if API fails
-        setMatterDocuments([
-          { id: 1, matterId: selectedMatter.id, name: 'Contract_Agreement.pdf', type: 'pdf', size: '2.4 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 10, 2024', category: 'Contracts' },
-          { id: 2, matterId: selectedMatter.id, name: 'Evidence_Exhibit_A.docx', type: 'doc', size: '840 KB', uploadedBy: 'David Chen', uploadDate: 'Mar 08, 2024', category: 'Evidence' },
-          { id: 3, matterId: selectedMatter.id, name: 'Court_Filing_Response.pdf', type: 'pdf', size: '1.1 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 05, 2024', category: 'Court Documents' },
-          { id: 4, matterId: selectedMatter.id, name: 'Client_Correspondence.pdf', type: 'pdf', size: '320 KB', uploadedBy: 'Alex Thompson', uploadDate: 'Mar 01, 2024', category: 'Correspondence' }
-        ]);
-      } finally {
-        setLoading(prev => ({ ...prev, documents: false }));
-      }
-    };
+    setMatterDocuments([
+      { id: 1, matterId: selectedMatter.id, name: 'Contract_Agreement.pdf', type: 'pdf', size: '2.4 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 10, 2024', category: 'Contracts' },
+      { id: 2, matterId: selectedMatter.id, name: 'Evidence_Exhibit_A.docx', type: 'doc', size: '840 KB', uploadedBy: 'David Chen', uploadDate: 'Mar 08, 2024', category: 'Evidence' },
+      { id: 3, matterId: selectedMatter.id, name: 'Court_Filing_Response.pdf', type: 'pdf', size: '1.1 MB', uploadedBy: 'Sarah Jenkins', uploadDate: 'Mar 05, 2024', category: 'Court Documents' },
+      { id: 4, matterId: selectedMatter.id, name: 'Client_Correspondence.pdf', type: 'pdf', size: '320 KB', uploadedBy: 'Alex Thompson', uploadDate: 'Mar 01, 2024', category: 'Correspondence' }
+    ]);
 
-    const fetchMatterTasks = async () => {
-      setLoading(prev => ({ ...prev, tasks: true }));
-      try {
-        const response = await taskService.getCaseTasks(selectedMatter.id);
-        // Transform the data to match the expected format
-        const formattedTasks = response.data.map(task => ({
-          id: task.id,
-          matterId: task.caseId,
-          title: task.title,
-          completed: task.status === 'completed',
-          priority: task.priority || 2,
-          dueDate: new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          assignee: task.assignedTo?.name || 'Unassigned'
-        }));
-        setMatterTasks(formattedTasks);
-        setError(prev => ({ ...prev, tasks: null }));
-      } catch (err) {
-        console.error('Error fetching tasks:', err);
-        setError(prev => ({ ...prev, tasks: 'Failed to load tasks' }));
-        // Use sample data if API fails
-        setMatterTasks([
-          { id: 1, matterId: selectedMatter.id, title: 'Review counter-affidavit draft', completed: false, priority: 3, dueDate: 'Today', assignee: 'Sarah Jenkins' },
-          { id: 2, matterId: selectedMatter.id, title: 'Prepare evidence summary', completed: false, priority: 2, dueDate: 'Tomorrow', assignee: 'David Chen' },
-          { id: 3, matterId: selectedMatter.id, title: 'File motion for extension', completed: true, priority: 1, dueDate: 'Mar 15', assignee: 'Sarah Jenkins' }
-        ]);
-      } finally {
-        setLoading(prev => ({ ...prev, tasks: false }));
-      }
-    };
+    setMatterTasks([
+      { id: 1, matterId: selectedMatter.id, title: 'Review counter-affidavit draft', completed: false, priority: 3, dueDate: 'Today', assignee: 'Sarah Jenkins' },
+      { id: 2, matterId: selectedMatter.id, title: 'Prepare evidence summary', completed: false, priority: 2, dueDate: 'Tomorrow', assignee: 'David Chen' },
+      { id: 3, matterId: selectedMatter.id, title: 'File motion for extension', completed: true, priority: 1, dueDate: 'Mar 15', assignee: 'Sarah Jenkins' }
+    ]);
 
-    const fetchMatterNotes = async () => {
-      setLoading(prev => ({ ...prev, notes: true }));
-      try {
-        const response = await noteService.getMyNotes({ caseId: selectedMatter.id });
-        // Transform the data to match the expected format
-        const formattedNotes = response.data.map(note => ({
-          id: note.id,
-          matterId: note.caseId,
-          content: note.content,
-          author: note.author?.name || 'Unknown',
-          date: new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        }));
-        setMatterNotes(formattedNotes);
-        setError(prev => ({ ...prev, notes: null }));
-      } catch (err) {
-        console.error('Error fetching notes:', err);
-        setError(prev => ({ ...prev, notes: 'Failed to load notes' }));
-        // Use sample data if API fails
-        setMatterNotes([
-          { id: 1, matterId: selectedMatter.id, content: 'Client confirmed availability for the hearing on March 18th. Will need to prepare final arguments by March 15th.', author: 'Sarah Jenkins', date: 'Mar 10, 2024' },
-          { id: 2, matterId: selectedMatter.id, content: 'Received additional evidence from client. Need to review and categorize.', author: 'David Chen', date: 'Mar 08, 2024' }
-        ]);
-      } finally {
-        setLoading(prev => ({ ...prev, notes: false }));
-      }
-    };
+    setMatterNotes([
+      { id: 1, matterId: selectedMatter.id, content: 'Client confirmed availability for the hearing on March 18th. Will need to prepare final arguments by March 15th.', author: 'Sarah Jenkins', date: 'Mar 10, 2024' },
+      { id: 2, matterId: selectedMatter.id, content: 'Received additional evidence from client. Need to review and categorize.', author: 'David Chen', date: 'Mar 08, 2024' }
+    ]);
 
-    const fetchMatterActivities = async () => {
-      setLoading(prev => ({ ...prev, activities: true }));
-      try {
-        const response = await activityService.getCaseActivities(selectedMatter.id);
-        // Transform the data to match the expected format
-        const formattedActivities = response.data.map(activity => ({
-          id: activity.id,
-          matterId: activity.caseId,
-          type: activity.type || 'document',
-          action: activity.action || 'Activity recorded',
-          detail: activity.detail || '',
-          user: activity.user?.name || 'System',
-          time: activity.createdAt || 'Recently'
-        }));
-        setMatterActivities(formattedActivities);
-        setError(prev => ({ ...prev, activities: null }));
-      } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError(prev => ({ ...prev, activities: 'Failed to load activities' }));
-        // Use sample data if API fails
-        setMatterActivities([
-          { id: 1, matterId: selectedMatter.id, type: 'document', action: 'Document uploaded', detail: 'Contract_Agreement.pdf', user: 'Sarah Jenkins', time: '2 hours ago' },
-          { id: 2, matterId: selectedMatter.id, type: 'task', action: 'Task completed', detail: 'File motion for extension', user: 'Sarah Jenkins', time: '1 day ago' },
-          { id: 3, matterId: selectedMatter.id, type: 'note', action: 'Note added', detail: 'Client meeting notes', user: 'David Chen', time: '2 days ago' },
-          { id: 4, matterId: selectedMatter.id, type: 'billing', action: 'Time entry added', detail: '2.5 hours - Document review', user: 'Sarah Jenkins', time: '3 days ago' }
-        ]);
-      } finally {
-        setLoading(prev => ({ ...prev, activities: false }));
-      }
-    };
-
-    fetchMatterDocuments();
-    fetchMatterTasks();
-    fetchMatterNotes();
-    fetchMatterActivities();
+    setMatterActivities([
+      { id: 1, matterId: selectedMatter.id, type: 'document', action: 'Document uploaded', detail: 'Contract_Agreement.pdf', user: 'Sarah Jenkins', time: '2 hours ago' },
+      { id: 2, matterId: selectedMatter.id, type: 'task', action: 'Task completed', detail: 'File motion for extension', user: 'Sarah Jenkins', time: '1 day ago' },
+      { id: 3, matterId: selectedMatter.id, type: 'note', action: 'Note added', detail: 'Client meeting notes', user: 'David Chen', time: '2 days ago' },
+      { id: 4, matterId: selectedMatter.id, type: 'billing', action: 'Time entry added', detail: '2.5 hours - Document review', user: 'Sarah Jenkins', time: '3 days ago' }
+    ]);
   }, [selectedMatter]);
 
   const [newNote, setNewNote] = useState('');
   const fileInputRef = useRef(null);
 
+   
+  const priorities = ['Low', 'Medium', 'High', 'Urgent'];
+   
   const practiceAreas = ['Corporate Litigation', 'Estate Planning', 'Real Estate', 'Intellectual Property', 'Family Law', 'Corporate', 'Criminal Defense', 'Immigration'];
   const statuses = ['Open', 'Pending', 'Closed', 'On Hold'];
 
@@ -314,152 +271,259 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
     }
   };
 
-  const getPriorityColor = (p) => p === 3 ? '#eb4d3d' : p === 2 ? '#ff9500' : '#4772fa';
-
-  const getFileIcon = (type) => {
-    switch (type) {
-      case 'pdf': return { icon: FileText, color: '#eb4d3d' };
-      case 'doc': return { icon: FileText, color: '#4772fa' };
-      case 'excel': return { icon: FileText, color: '#00c853' };
-      default: return { icon: FileText, color: '#808080' };
-    }
-  };
-
   const handleFileUpload = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0 && selectedMatter) {
-      try {
-        // Create a FormData object to send the file
-        const formData = new FormData();
-        formData.append('document', files[0]);
-        
-        const response = await documentService.uploadDocument(formData);
-        
-        // Add the new document to the list
-        const newDoc = {
-          id: Date.now(),
-          matterId: selectedMatter.id,
-          name: files[0].name,
-          type: files[0].type || 'pdf',
-          size: `${(files[0].size / 1024).toFixed(1)} KB`,
-          uploadedBy: 'You',
-          uploadDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          category: 'Uncategorized'
-        };
-        
-        setMatterDocuments([newDoc, ...matterDocuments]);
-        addNotification('success', 'Document uploaded successfully');
-        setShowUploadModal(false);
-      } catch (error) {
-        console.error('Error uploading document:', error);
-        addNotification('error', 'Failed to upload document');
-      }
+      const newDoc = {
+        id: Date.now(),
+        matterId: selectedMatter.id,
+        name: files[0].name,
+        type: files[0].type || 'pdf',
+        size: `${(files[0].size / 1024).toFixed(1)} KB`,
+        uploadedBy: 'You',
+        uploadDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        category: 'Uncategorized'
+      };
+
+      setMatterDocuments([newDoc, ...matterDocuments]);
+      addNotification('success', 'Document uploaded successfully');
+      setShowUploadModal(false);
     }
   };
 
   const addNote = async () => {
     if (newNote.trim() && selectedMatter) {
-      try {
-        // Create a new note via the API
-        const noteData = {
-          caseId: selectedMatter.id,
-          content: newNote
-        };
-        
-        const response = await noteService.createNote(noteData);
-        
-        // Format the response to match our UI format
-        const newNoteFormatted = {
-          id: response.data.id,
-          matterId: selectedMatter.id,
-          content: newNote,
-          author: response.data.author?.name || 'You',
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        };
-        
-        setMatterNotes([newNoteFormatted, ...matterNotes]);
-        setNewNote('');
-        addNotification('success', 'Note added');
-      } catch (error) {
-        console.error('Error adding note:', error);
-        addNotification('error', 'Failed to add note');
-        
-        // Fallback to client-side note creation if API fails
-        const note = {
-          id: Date.now(),
-          matterId: selectedMatter.id,
-          content: newNote,
-          author: 'You',
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        };
-        setMatterNotes([note, ...matterNotes]);
-        setNewNote('');
-      }
+      const note = {
+        id: Date.now(),
+        matterId: selectedMatter.id,
+        content: newNote,
+        author: 'You',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      };
+      setMatterNotes([note, ...matterNotes]);
+      setNewNote('');
+      addNotification('success', 'Note added');
     }
   };
 
   const createMatter = async () => {
-    if (!newMatterForm.name.trim() || !newMatterForm.client || !newMatterForm.practiceArea) {
+    if (!newMatterForm.title.trim() || !newMatterForm.category) {
       addNotification('error', 'Please fill in all required fields');
       return;
     }
 
     try {
-      // Create a new matter via the API
-      const matterData = {
-        name: newMatterForm.name,
-        client: newMatterForm.client,
-        practiceArea: newMatterForm.practiceArea,
-        assignedTo: newMatterForm.responsible,
-        status: newMatterForm.status || 'Open',
-        description: newMatterForm.description || 'No description provided'
-      };
+      setLoading(prev => ({ ...prev, matters: true }));
       
-      const response = await caseService.createCase(matterData);
-      
-      // Format the response to match our UI format
-      const newMatter = {
-        id: response.data.id,
-        number: response.data.caseNumber || `MAT-2024-${String(matters.length + 1).padStart(3, '0')}`,
-        name: newMatterForm.name,
-        client: newMatterForm.client,
-        status: newMatterForm.status || 'Open',
-        practiceArea: newMatterForm.practiceArea,
-        responsible: newMatterForm.responsible || 'Unassigned',
-        openDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        lastActivity: 'Just now',
-        balance: 0,
-        description: newMatterForm.description || 'No description provided',
-        tags: []
+      const payload = {
+        title: newMatterForm.title,
+        description: newMatterForm.description,
+        category: newMatterForm.category,
+        subCategory: newMatterForm.subcategory,
+        clientId: newMatterForm.clientId,
+        advocateId: newMatterForm.advocateId,
+        paralegalIds: newMatterForm.paralegalId ? [newMatterForm.paralegalId] : [],
+        courtName: newMatterForm.courtName,
+        courtLocation: newMatterForm.courtLocation,
+        judgeAssigned: newMatterForm.judgeAssigned,
+        filingDate: newMatterForm.filingDate,
+        nextHearingDate: newMatterForm.nextHearing,
+        opposingParty: newMatterForm.opposingParty,
+        caseValue: newMatterForm.caseAmount ? parseFloat(newMatterForm.caseAmount) : 0,
+        priority: newMatterForm.priority?.toLowerCase() || 'medium',
+        tags: newMatterForm.tags ? newMatterForm.tags.split(',').map(t => t.trim()).filter(t => t) : []
       };
 
-      setMatters([newMatter, ...matters]);
-      setNewMatterForm({ name: '', client: '', practiceArea: '', responsible: '', status: 'Open', description: '' });
-      setShowNewMatterModal(false);
-      addNotification('success', `Matter "${newMatter.name}" created successfully`);
-    } catch (error) {
-      console.error('Error creating matter:', error);
-      addNotification('error', 'Failed to create matter');
+      const response = await fetch(`${API_BASE_URL}/cases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create case');
+      }
+
+      const data = await response.json();
       
-      // Fallback to client-side matter creation if API fails
-      const newMatter = {
-        id: Date.now(),
-        number: `MAT-2024-${String(matters.length + 1).padStart(3, '0')}`,
-        name: newMatterForm.name,
-        client: newMatterForm.client,
-        status: newMatterForm.status || 'Open',
-        practiceArea: newMatterForm.practiceArea,
-        responsible: newMatterForm.responsible || 'Unassigned',
-        openDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      // Transform response to frontend format
+      const newCase = {
+        id: data.case._id,
+        number: data.case.caseNumber || `CASE-${data.case._id.slice(-6)}`,
+        name: data.case.title,
+        description: data.case.description,
+        client: data.case.client?.name || 'Unknown',
+        clientId: data.case.client?._id,
+        clientPhone: data.case.client?.phone || '',
+        clientEmail: data.case.client?.email || '',
+        category: data.case.category,
+        subCategory: data.case.subCategory,
+        practiceArea: data.case.category,
+        responsible: data.case.advocate?.name || 'Unassigned',
+        advocateId: data.case.advocate?._id,
+        paralegalId: data.case.paralegals?.[0]?._id,
+        courtName: data.case.courtName,
+        courtLocation: data.case.courtLocation,
+        judgeAssigned: data.case.judgeAssigned,
+        filingDate: data.case.filingDate,
+        nextHearing: data.case.nextHearingDate,
+        opposingParty: data.case.opposingParty,
+        caseAmount: data.case.caseValue,
+        priority: data.case.priority,
+        tags: data.case.tags,
+        status: 'Open',
+        openDate: new Date(data.case.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         lastActivity: 'Just now',
         balance: 0,
-        description: newMatterForm.description || 'No description provided',
-        tags: []
+        createdAt: data.case.createdAt
       };
 
-      setMatters([newMatter, ...matters]);
-      setNewMatterForm({ name: '', client: '', practiceArea: '', responsible: '', status: 'Open', description: '' });
+      setMatters([newCase, ...matters]);
+      setNewMatterForm({
+        title: '',
+        description: '',
+        category: '',
+        subcategory: '',
+        clientId: '',
+        advocateId: '',
+        paralegalId: '',
+        courtName: '',
+        courtLocation: '',
+        judgeAssigned: '',
+        filingDate: '',
+        nextHearing: '',
+        opposingParty: '',
+        caseAmount: '',
+        priority: 'Medium',
+        tags: '',
+        status: 'Open'
+      });
       setShowNewMatterModal(false);
+      addNotification('success', `Case "${newCase.name}" created successfully`);
+    } catch (err) {
+      console.error('Error creating case:', err);
+      addNotification('error', err.message || 'Failed to create case');
+    } finally {
+      setLoading(prev => ({ ...prev, matters: false }));
+    }
+  };
+
+  const updateMatter = async () => {
+    if (!editMatterForm.title.trim() || !editMatterForm.category || !selectedMatter) {
+      addNotification('error', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setLoading(prev => ({ ...prev, matters: true }));
+      
+      const payload = {
+        title: editMatterForm.title,
+        description: editMatterForm.description,
+        category: editMatterForm.category,
+        subCategory: editMatterForm.subcategory,
+        clientId: editMatterForm.clientId,
+        advocateId: editMatterForm.advocateId,
+        paralegalIds: editMatterForm.paralegalId ? [editMatterForm.paralegalId] : [],
+        courtName: editMatterForm.courtName,
+        courtLocation: editMatterForm.courtLocation,
+        judgeAssigned: editMatterForm.judgeAssigned,
+        filingDate: editMatterForm.filingDate,
+        nextHearingDate: editMatterForm.nextHearing,
+        opposingParty: editMatterForm.opposingParty,
+        caseValue: editMatterForm.caseAmount ? parseFloat(editMatterForm.caseAmount) : 0,
+        priority: editMatterForm.priority?.toLowerCase() || 'medium',
+        tags: editMatterForm.tags ? editMatterForm.tags.split(',').map(t => t.trim()).filter(t => t) : []
+      };
+
+      const response = await fetch(`${API_BASE_URL}/cases/${selectedMatter.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update case');
+      }
+
+      const data = await response.json();
+      
+      const updatedCase = {
+        ...selectedMatter,
+        name: data.case.title,
+        description: data.case.description,
+        category: data.case.category,
+        practiceArea: data.case.category,
+        subCategory: data.case.subCategory,
+        client: data.case.client?.name || selectedMatter.client,
+        clientId: data.case.client?._id,
+        clientPhone: data.case.client?.phone || '',
+        clientEmail: data.case.client?.email || '',
+        responsible: data.case.advocate?.name || selectedMatter.responsible,
+        advocateId: data.case.advocate?._id,
+        paralegalId: data.case.paralegals?.[0]?._id,
+        courtName: data.case.courtName,
+        courtLocation: data.case.courtLocation,
+        judgeAssigned: data.case.judgeAssigned,
+        filingDate: data.case.filingDate,
+        nextHearing: data.case.nextHearingDate,
+        opposingParty: data.case.opposingParty,
+        caseAmount: data.case.caseValue,
+        priority: data.case.priority,
+        tags: data.case.tags,
+        lastActivity: 'Just now'
+      };
+
+      setMatters(matters.map(m => m.id === selectedMatter.id ? updatedCase : m));
+      setSelectedMatter(updatedCase);
+      setShowEditMatterModal(false);
+      addNotification('success', 'Case updated successfully');
+    } catch (err) {
+      console.error('Error updating case:', err);
+      addNotification('error', err.message || 'Failed to update case');
+    } finally {
+      setLoading(prev => ({ ...prev, matters: false }));
+    }
+  };
+
+  const deleteMatter = async (matterId) => {
+    if (!window.confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(prev => ({ ...prev, matters: true }));
+      
+      const response = await fetch(`${API_BASE_URL}/cases/${matterId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete case');
+      }
+
+      setMatters(matters.filter(m => m.id !== matterId));
+      if (selectedMatter?.id === matterId) {
+        setSelectedMatter(null);
+      }
+      addNotification('success', 'Case deleted successfully');
+    } catch (err) {
+      console.error('Error deleting case:', err);
+      addNotification('error', err.message || 'Failed to delete case');
+    } finally {
+      setLoading(prev => ({ ...prev, matters: false }));
     }
   };
 
@@ -505,9 +569,98 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
           <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 500, backgroundColor: statusStyle.bg, color: statusStyle.color }}>{matter.status}</span>
           <p style={{ fontSize: 12, color: colors.textMuted, margin: '6px 0 0 0' }}>{matter.lastActivity}</p>
         </div>
-        <button onClick={(e) => { e.stopPropagation(); }} style={{ padding: 8, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 4 }}>
-          <MoreVertical size={18} style={{ color: colors.textSecondary }} />
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              setMatterContextMenu(matterContextMenu === matter.id ? null : matter.id);
+            }} 
+            style={{ padding: 8, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 4 }}
+          >
+            <MoreVertical size={18} style={{ color: colors.textSecondary }} />
+          </button>
+          {matterContextMenu === matter.id && (
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                backgroundColor: colors.card,
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                zIndex: 1000,
+                minWidth: 180
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditMatterForm({
+                    title: matter.name,
+                    description: matter.description || '',
+                    category: matter.category || matter.practiceArea || '',
+                    subcategory: matter.subCategory || '',
+                    clientId: matter.clientId || '',
+                    advocateId: matter.advocateId || '',
+                    paralegalId: matter.paralegalId || '',
+                    courtName: matter.courtName || '',
+                    courtLocation: matter.courtLocation || '',
+                    judgeAssigned: matter.judgeAssigned || '',
+                    filingDate: matter.filingDate || '',
+                    nextHearing: matter.nextHearing || '',
+                    opposingParty: matter.opposingParty || '',
+                    caseAmount: matter.caseAmount ? String(matter.caseAmount) : '',
+                    priority: matter.priority || 'medium',
+                    tags: matter.tags?.join(', ') || '',
+                    status: matter.status || 'Open'
+                  });
+                  setShowEditMatterModal(true);
+                  setMatterContextMenu(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: colors.text,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = colors.bgHover}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              >
+                Edit Matter
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteMatter(matter.id);
+                  setMatterContextMenu(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: '#ef4444',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  transition: 'background-color 0.2s',
+                  borderRadius: '0 0 8px 8px'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -547,7 +700,7 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
   };
 
   return (
-    <div style={{ display: 'flex', height: '100%', backgroundColor: colors.bgSecondary }}>
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: colors.bgSecondary }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <div style={{ padding: '16px 24px', backgroundColor: colors.card, borderBottom: `1px solid ${colors.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -636,7 +789,7 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
           )}
         </div>
 
-        <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'grid' ? 24 : 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'grid' ? 24 : 0 }}>
           {viewMode === 'list' ? (
             <div style={{ backgroundColor: colors.card }}>
               <div style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`, fontSize: 12, fontWeight: 500, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -662,635 +815,627 @@ export default function MattersPage({ addNotification = () => {}, setActiveView 
         </div>
       </div>
 
-      {/* {selectedMatter && (
-        <div className="matter-detail-panel" style={{ width: 480, borderLeft: `1px solid ${colors.border}`, backgroundColor: colors.card, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, color: colors.textSecondary }}>{selectedMatter.number}</span>
-                  <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 500, backgroundColor: getStatusColor(selectedMatter.status).bg, color: getStatusColor(selectedMatter.status).color }}>{selectedMatter.status}</span>
-                </div>
-                <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: 0 }}>{selectedMatter.name}</h2>
-              </div>
-              <button onClick={() => setSelectedMatter(null)} style={{ padding: 8, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 6 }}>
-                <X size={20} style={{ color: colors.textSecondary }} />
-              </button>
+      {showNewMatterModal && (
+  <div
+    onClick={() => setShowNewMatterModal(false)}
+    className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="bg-white dark:bg-gray-900 rounded-2xl w-[640px] max-w-[95%] max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
+    >
+      {/* Header */}
+      <div className="px-6 py-5 border-b flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Create New Matter</h3>
+          <p className="text-sm text-gray-500">Fill in the details below</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (!usersLoading && users.length === 0) {
+                fetchUsers();
+                setShowIdHelper(!showIdHelper);
+              }
+            }}
+            className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600"
+            title="Help with IDs"
+          >
+            ?
+          </button>
+          <button
+            onClick={() => setShowNewMatterModal(false)}
+            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+        {/* Basic Information */}
+        <div>
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-3">Basic Information</p>
+          <div className="space-y-3">
+            <div className="relative">
+              <input
+                value={newMatterForm.title}
+                onChange={(e) => setNewMatterForm({ ...newMatterForm, title: e.target.value })}
+                placeholder="Matter Title"
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">*</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: colors.textSecondary }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <User size={14} />
-                <span>{selectedMatter.client}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Briefcase size={14} />
-                <span>{selectedMatter.practiceArea}</span>
-              </div>
+
+            <textarea
+              value={newMatterForm.description}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, description: e.target.value })}
+              placeholder="Description (optional)"
+              rows={2}
+              className="w-full px-4 py-2 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Enter Category"
+                value={newMatterForm.category}
+                onChange={(e) => setNewMatterForm({ ...newMatterForm, category: e.target.value })}
+                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Enter SubCategory"
+                value={newMatterForm.subcategory}
+                onChange={(e) => setNewMatterForm({ ...newMatterForm, subcategory: e.target.value })}
+                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           </div>
+        </div>
 
-          <div style={{ display: 'flex', borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.bgSecondary }}>
-            {['overview', 'documents', 'tasks', 'notes', 'billing', 'activity'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  flex: 1, padding: '12px 8px', fontSize: 13, fontWeight: activeTab === tab ? 500 : 400,
-                  color: activeTab === tab ? accentColor : colors.textSecondary, backgroundColor: 'transparent', border: 'none',
-                  borderBottom: activeTab === tab ? `2px solid ${accentColor}` : '2px solid transparent', cursor: 'pointer', textTransform: 'capitalize'
-                }}
-              >
-                {tab}
-              </button>
-            ))}
+        {/* Team Assignment */}
+        <div>
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-3">Team Assignment</p>
+          <div className="grid grid-cols-3 gap-3">
+            {users.length > 0 ? (
+              <>
+                <select
+                  value={newMatterForm.clientId}
+                  onChange={(e) => setNewMatterForm({ ...newMatterForm, clientId: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Client</option>
+                  {users.filter(u => u.role === 'client').map(u => (
+                    <option key={u._id} value={u._id}>{u.name} ({u._id.slice(-6)})</option>
+                  ))}
+                </select>
+                <select
+                  value={newMatterForm.advocateId}
+                  onChange={(e) => setNewMatterForm({ ...newMatterForm, advocateId: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Advocate</option>
+                  {users.filter(u => u.role === 'advocate').map(u => (
+                    <option key={u._id} value={u._id}>{u.name} ({u._id.slice(-6)})</option>
+                  ))}
+                </select>
+                <select
+                  value={newMatterForm.paralegalId}
+                  onChange={(e) => setNewMatterForm({ ...newMatterForm, paralegalId: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Paralegal (optional)</option>
+                  {users.filter(u => u.role === 'paralegal').map(u => (
+                    <option key={u._id} value={u._id}>{u.name} ({u._id.slice(-6)})</option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <input
+                  placeholder="Client ID"
+                  value={newMatterForm.clientId}
+                  onChange={(e) => setNewMatterForm({ ...newMatterForm, clientId: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  title="MongoDB ObjectId for Client user"
+                />
+                <input
+                  placeholder="Advocate ID"
+                  value={newMatterForm.advocateId}
+                  onChange={(e) => setNewMatterForm({ ...newMatterForm, advocateId: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  title="MongoDB ObjectId for Advocate user"
+                />
+                <input
+                  placeholder="Paralegal ID (optional)"
+                  value={newMatterForm.paralegalId}
+                  onChange={(e) => setNewMatterForm({ ...newMatterForm, paralegalId: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  title="MongoDB ObjectId for Paralegal user"
+                />
+              </>
+            )}
           </div>
+          {users.length === 0 && (
+            <p className="text-xs text-amber-600 mt-2">💡 Click ? button to load user list</p>
+          )}
+        </div>
 
-          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
-            {activeTab === 'overview' && (
-              <div style={{ padding: 20 }}>
-                <div style={{ marginBottom: 24 }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 12px 0' }}>Description</h3>
-                  <p style={{ fontSize: 14, color: colors.text, lineHeight: 1.6, margin: 0 }}>{selectedMatter.description}</p>
-                </div>
-
-                <div style={{ marginBottom: 24 }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 12px 0' }}>Details</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div style={{ padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '0 0 4px 0' }}>Responsible Attorney</p>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{selectedMatter.responsible}</p>
-                    </div>
-                    <div style={{ padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '0 0 4px 0' }}>Open Date</p>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{selectedMatter.openDate}</p>
-                    </div>
-                    <div style={{ padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '0 0 4px 0' }}>Practice Area</p>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{selectedMatter.practiceArea}</p>
-                    </div>
-                    <div style={{ padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '0 0 4px 0' }}>Outstanding Balance</p>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: selectedMatter.balance > 0 ? '#ff9500' : '#00c853', margin: 0 }}>${selectedMatter.balance.toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 24 }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 12px 0' }}>Contact</h3>
-                  <div style={{ padding: 16, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: accentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600 }}>
-                        {selectedMatter.client.split(' ').map((n) => n[0]).join('')}
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{selectedMatter.client}</p>
-                        <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>Primary Contact</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <a href={`tel:${selectedMatter.clientPhone || '+15551234567'}`} style={{ flex: 1, padding: '8px 12px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', color: colors.text }}>
-                        <Phone size={14} /> Call
-                      </a>
-                      <a href={`mailto:${selectedMatter.clientEmail || 'client@email.com'}`} style={{ flex: 1, padding: '8px 12px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', color: colors.text }}>
-                        <Mail size={14} /> Email
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
+        {/* ID Helper Info */}
+        {showIdHelper && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-semibold text-blue-900 mb-2">📋 User List</h4>
+            {usersLoading ? (
+              <p className="text-sm text-blue-700">Loading users...</p>
+            ) : users.length > 0 ? (
+              <div className="space-y-2">
                 <div>
-                  <h3 style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 12px 0' }}>Quick Stats</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                    <div style={{ padding: 12, backgroundColor: colors.accentLight, borderRadius: 8, textAlign: 'center' }}>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: accentColor, margin: 0 }}>{selectedMatterDocs.length}</p>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>Documents</p>
-                    </div>
-                    <div style={{ padding: 12, backgroundColor: isDark ? 'rgba(0,200,83,0.15)' : '#f0fff4', borderRadius: 8, textAlign: 'center' }}>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: '#00c853', margin: 0 }}>{selectedMatterTasks.filter((t) => t.completed).length}/{selectedMatterTasks.length}</p>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>Tasks Done</p>
-                    </div>
-                    <div style={{ padding: 12, backgroundColor: isDark ? 'rgba(255,149,0,0.15)' : '#fff8f0', borderRadius: 8, textAlign: 'center' }}>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: '#ff9500', margin: 0 }}>{selectedMatterNotes.length}</p>
-                      <p style={{ fontSize: 11, color: colors.textSecondary, margin: '4px 0 0 0' }}>Notes</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'documents' && (
-              <div style={{ padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.text, margin: 0 }}>Documents</h3>
-                  <button
-                    onClick={() => setShowUploadModal(true)}
-                    style={{ padding: '8px 16px', backgroundColor: accentColor, color: '#fff', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <Upload size={14} /> Upload
-                  </button>
-                </div>
-
-                {selectedMatterDocs.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selectedMatterDocs.map((doc) => {
-                      const fileStyle = getFileIcon(doc.type);
-                      return (
-                        <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: `${fileStyle.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: fileStyle.color }}>
-                            <fileStyle.icon size={20} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                              <span>{doc.size}</span>
-                              <span>•</span>
-                              <span>{doc.uploadDate}</span>
-                              <span>•</span>
-                              <span>{doc.uploadedBy}</span>
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button style={{ padding: 6, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 4 }}>
-                              <Eye size={16} style={{ color: colors.textSecondary }} />
-                            </button>
-                            <button onClick={() => addNotification('success', `Downloading ${doc.name}`)} style={{ padding: 6, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 4 }}>
-                              <Download size={16} style={{ color: colors.textSecondary }} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: 40, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                    <Folder size={36} style={{ color: colors.textMuted, marginBottom: 12 }} />
-                    <p style={{ fontSize: 14, color: colors.textSecondary, margin: 0 }}>No documents yet</p>
-                    <button
-                      onClick={() => setShowUploadModal(true)}
-                      style={{ marginTop: 12, padding: '8px 16px', backgroundColor: accentColor, color: '#fff', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: 'none' }}
-                    >
-                      Upload First Document
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'tasks' && (
-              <div style={{ padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.text, margin: 0 }}>Tasks</h3>
-                  <button
-                    onClick={() => { setActiveView('tasks'); }}
-                    style={{ padding: '8px 16px', backgroundColor: accentColor, color: '#fff', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <Plus size={14} /> Add Task
-                  </button>
-                </div>
-
-                {selectedMatterTasks.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selectedMatterTasks.map((task) => (
-                      <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${task.completed ? '#00c853' : getPriorityColor(task.priority)}`, backgroundColor: task.completed ? '#00c853' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 }}>
-                          {task.completed && <CheckCircle2 size={12} style={{ color: '#fff' }} />}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 14, color: task.completed ? colors.textSecondary : colors.text, margin: 0, textDecoration: task.completed ? 'line-through' : 'none' }}>{task.title}</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 12, color: colors.textSecondary }}>
-                            <span style={{ color: task.dueDate === 'Today' ? '#eb4d3d' : colors.textSecondary }}>{task.dueDate}</span>
-                            <span>•</span>
-                            <span>{task.assignee}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: 40, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                    <ListTodo size={36} style={{ color: colors.textMuted, marginBottom: 12 }} />
-                    <p style={{ fontSize: 14, color: colors.textSecondary, margin: 0 }}>No tasks yet</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'notes' && (
-              <div style={{ padding: 20 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.text, margin: '0 0 16px 0' }}>Notes</h3>
-
-                <div style={{ marginBottom: 20 }}>
-                  <textarea
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Add a note..."
-                    style={{ width: '100%', minHeight: 80, padding: 12, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, resize: 'vertical', outline: 'none', boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                    <button
-                      onClick={addNote}
-                      disabled={!newNote.trim()}
-                      style={{ padding: '8px 16px', backgroundColor: newNote.trim() ? accentColor : colors.bgTertiary, color: newNote.trim() ? '#fff' : colors.textSecondary, borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: newNote.trim() ? 'pointer' : 'not-allowed', border: 'none' }}
-                    >
-                      Add Note
-                    </button>
-                  </div>
-                </div>
-
-                {selectedMatterNotes.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {selectedMatterNotes.map((note) => (
-                      <div key={note.id} style={{ padding: 16, backgroundColor: colors.bgSecondary, borderRadius: 8, borderLeft: `3px solid ${accentColor}` }}>
-                        <p style={{ fontSize: 14, color: colors.text, lineHeight: 1.6, margin: 0 }}>{note.content}</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 12, color: colors.textSecondary }}>
-                          <span style={{ fontWeight: 500 }}>{note.author}</span>
-                          <span>•</span>
-                          <span>{note.date}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: 40, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                    <FileText size={36} style={{ color: colors.textMuted, marginBottom: 12 }} />
-                    <p style={{ fontSize: 14, color: colors.textSecondary, margin: 0 }}>No notes yet</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'billing' && (
-              <div style={{ padding: 20 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.text, margin: '0 0 16px 0' }}>Billing</h3>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-                  <div style={{ padding: 16, backgroundColor: isDark ? 'rgba(255,149,0,0.15)' : '#fff8f0', borderRadius: 8, textAlign: 'center' }}>
-                    <p style={{ fontSize: 24, fontWeight: 700, color: '#ff9500', margin: 0 }}>${selectedMatter.balance.toLocaleString()}</p>
-                    <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Outstanding</p>
-                  </div>
-                  <div style={{ padding: 16, backgroundColor: isDark ? 'rgba(0,200,83,0.15)' : '#f0fff4', borderRadius: 8, textAlign: 'center' }}>
-                    <p style={{ fontSize: 24, fontWeight: 700, color: '#00c853', margin: 0 }}>$8,500</p>
-                    <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>Total Billed</p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '0 0 12px 0' }}>Recent Time Entries</h4>
-                  {[
-                    { date: 'Mar 10, 2024', desc: 'Document review and analysis', hours: 2.5, rate: 250 },
-                    { date: 'Mar 08, 2024', desc: 'Client call and preparation', hours: 1.0, rate: 250 },
-                    { date: 'Mar 05, 2024', desc: 'Court filing preparation', hours: 3.0, rate: 250 }
-                  ].map((entry, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: colors.bgSecondary, borderRadius: 8, marginBottom: 8 }}>
-                      <div>
-                        <p style={{ fontSize: 14, color: colors.text, margin: 0 }}>{entry.desc}</p>
-                        <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>{entry.date}</p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>${(entry.hours * entry.rate).toFixed(2)}</p>
-                        <p style={{ fontSize: 12, color: colors.textSecondary, margin: '4px 0 0 0' }}>{entry.hours}h @ ${entry.rate}/hr</p>
-                      </div>
+                  <p className="text-xs font-semibold text-blue-900">Clients:</p>
+                  {users.filter(u => u.role === 'client').map(u => (
+                    <div key={u._id} className="text-xs text-blue-700 ml-2">
+                      {u.name}: <code className="bg-white px-2 py-1 rounded">{u._id}</code>
                     </div>
                   ))}
                 </div>
+                <div>
+                  <p className="text-xs font-semibold text-blue-900">Advocates:</p>
+                  {users.filter(u => u.role === 'advocate').map(u => (
+                    <div key={u._id} className="text-xs text-blue-700 ml-2">
+                      {u.name}: <code className="bg-white px-2 py-1 rounded">{u._id}</code>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-blue-900">Paralegals:</p>
+                  {users.filter(u => u.role === 'paralegal').map(u => (
+                    <div key={u._id} className="text-xs text-blue-700 ml-2">
+                      {u.name}: <code className="bg-white px-2 py-1 rounded">{u._id}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-700">Could not load user list. Please enter MongoDB ObjectId manually.</p>
+            )}
+          </div>
+        )}
 
-                <button
-                  onClick={() => setShowAddTimeEntryModal(true)}
-                  style={{ width: '100%', padding: '12px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: colors.text }}
-                >
-                  <Timer size={16} /> Add Time Entry
-                </button>
+        {/* Court Details */}
+        <div>
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-3">Court Details</p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <input 
+              placeholder="Court Name" 
+              value={newMatterForm.courtName}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, courtName: e.target.value })}
+              className="px-4 py-2 border rounded-lg" 
+            />
+            <input 
+              placeholder="Court Location" 
+              value={newMatterForm.courtLocation}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, courtLocation: e.target.value })}
+              className="px-4 py-2 border rounded-lg" 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <input 
+              placeholder="Judge Assigned" 
+              value={newMatterForm.judgeAssigned}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, judgeAssigned: e.target.value })}
+              className="px-4 py-2 border rounded-lg" 
+            />
+            <input 
+              placeholder="Opposing Party" 
+              value={newMatterForm.opposingParty}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, opposingParty: e.target.value })}
+              className="px-4 py-2 border rounded-lg" 
+            />
+          </div>
+        </div>
+
+        {/* Dates */}
+        <div>
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-3">Dates & Schedule</p>
+          <div className="grid grid-cols-2 gap-3">
+            <input 
+              type="date" 
+              value={newMatterForm.filingDate}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, filingDate: e.target.value })}
+              placeholder="Filing Date"
+              className="px-4 py-2 border rounded-lg" 
+            />
+            <input 
+              type="date" 
+              value={newMatterForm.nextHearing}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, nextHearing: e.target.value })}
+              placeholder="Next Hearing"
+              className="px-4 py-2 border rounded-lg" 
+            />
+          </div>
+        </div>
+
+        {/* Case Settings */}
+        <div>
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-3">Case Settings</p>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <input 
+              type="number" 
+              placeholder="Amount" 
+              value={newMatterForm.caseAmount}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, caseAmount: e.target.value })}
+              className="px-4 py-2 border rounded-lg" 
+            />
+            <select 
+              value={newMatterForm.priority}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, priority: e.target.value })}
+              className="px-4 py-2 border rounded-lg"
+            >
+              {priorities.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select 
+              value={newMatterForm.status}
+              onChange={(e) => setNewMatterForm({ ...newMatterForm, status: e.target.value })}
+              className="px-4 py-2 border rounded-lg"
+            >
+              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <input 
+            placeholder="Tags (comma separated)" 
+            value={newMatterForm.tags}
+            onChange={(e) => setNewMatterForm({ ...newMatterForm, tags: e.target.value })}
+            className="w-full px-4 py-2 border rounded-lg" 
+          />
+        </div>
+
+      </div>
+
+      {/* Connection Warning for Advocates */}
+      <div className="px-6 py-3 bg-amber-50 border-t border-amber-200">
+        <p className="text-xs text-amber-700">
+          <strong>⚠️ Note:</strong> Advocate ko client ke saath pehle connection establish hona chahiye case create karne se pehle.
+          Agar connection error aaye to "Connections" page par jao aur client ko accept karo.
+        </p>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t flex gap-3 bg-gray-50">
+        <button
+          onClick={() => setShowNewMatterModal(false)}
+          className="flex-1 py-2 border rounded-lg hover:bg-gray-100"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={createMatter}
+          disabled={!newMatterForm.title || !newMatterForm.category || !newMatterForm.clientId || !newMatterForm.advocateId}
+          className="flex-1 py-2 rounded-lg bg-blue-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Create Matter
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+      {/* {selectedMatter && (
+        <div style={{ width: 420, backgroundColor: colors.card, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 500, backgroundColor: getStatusColor(selectedMatter.status).bg, color: getStatusColor(selectedMatter.status).color }}>{selectedMatter.status}</span>
+                {selectedMatter.tags?.map((tag, i) => (
+                  <span key={i} style={{ padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 500, backgroundColor: tag === 'Priority' ? '#fef3f2' : tag === 'VIP' ? '#fef9c3' : colors.bgTertiary, color: tag === 'Priority' ? '#b91c1c' : tag === 'VIP' ? '#a16207' : colors.textSecondary }}>{tag}</span>
+                ))}
+              </div>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: '8px 0 4px 0' }}>{selectedMatter.name}</h2>
+              <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0 }}>{selectedMatter.number}</p>
+            </div>
+            <button onClick={() => setSelectedMatter(null)} style={{ padding: 8, backgroundColor: colors.bgTertiary, border: 'none', cursor: 'pointer', borderRadius: 8 }}>
+              <X size={18} style={{ color: colors.textSecondary }} />
+            </button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Client Information</div>
+              <div style={{ backgroundColor: colors.bgSecondary, borderRadius: 10, padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accentColor }}>
+                    <User size={20} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{selectedMatter.client}</p>
+                    <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>Client</p>
+                  </div>
+                </div>
+                {selectedMatter.clientPhone && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: colors.textSecondary, marginBottom: 6 }}>
+                    <Phone size={14} />
+                    <span>{selectedMatter.clientPhone}</span>
+                  </div>
+                )}
+                {selectedMatter.clientEmail && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: colors.textSecondary }}>
+                    <Mail size={14} />
+                    <span>{selectedMatter.clientEmail}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Case Details</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: colors.textSecondary }}>Practice Area</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.practiceArea || selectedMatter.category || '-'}</span>
+                </div>
+                {selectedMatter.subcategory && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: colors.textSecondary }}>Subcategory</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.subcategory}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: colors.textSecondary }}>Responsible</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.responsible}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: colors.textSecondary }}>Open Date</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.openDate}</span>
+                </div>
+                {selectedMatter.priority && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: colors.textSecondary }}>Priority</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: selectedMatter.priority === 'Urgent' ? '#ef4444' : selectedMatter.priority === 'High' ? '#f97316' : colors.text }}>{selectedMatter.priority}</span>
+                  </div>
+                )}
+                {selectedMatter.caseAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: colors.textSecondary }}>Case Amount</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>${selectedMatter.caseAmount.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {(selectedMatter.courtName || selectedMatter.courtLocation || selectedMatter.judgeAssigned || selectedMatter.opposingParty) && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Court Information</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {selectedMatter.courtName && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: colors.textSecondary }}>Court Name</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.courtName}</span>
+                    </div>
+                  )}
+                  {selectedMatter.courtLocation && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: colors.textSecondary }}>Location</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.courtLocation}</span>
+                    </div>
+                  )}
+                  {selectedMatter.judgeAssigned && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: colors.textSecondary }}>Judge</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.judgeAssigned}</span>
+                    </div>
+                  )}
+                  {selectedMatter.opposingParty && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: colors.textSecondary }}>Opposing Party</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{selectedMatter.opposingParty}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {activeTab === 'activity' && (
-              <div style={{ padding: 20 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.text, margin: '0 0 16px 0' }}>Activity</h3>
-
-                {selectedMatterActivities.length > 0 ? (
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: 11, top: 0, bottom: 0, width: 2, backgroundColor: colors.border }}></div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      {selectedMatterActivities.map((activity) => (
-                        <div key={activity.id} style={{ display: 'flex', gap: 12, position: 'relative' }}>
-                          <div style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: colors.card, border: `2px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                            {activity.type === 'document' && <FileText size={12} style={{ color: accentColor }} />}
-                            {activity.type === 'task' && <CheckCircle2 size={12} style={{ color: '#00c853' }} />}
-                            {activity.type === 'note' && <Edit3 size={12} style={{ color: '#9c27b0' }} />}
-                            {activity.type === 'billing' && <DollarSign size={12} style={{ color: '#ff9500' }} />}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: 14, color: colors.text, margin: 0 }}>
-                              <span style={{ fontWeight: 500 }}>{activity.action}</span>
-                              <span style={{ color: colors.textSecondary }}> - {activity.detail}</span>
-                            </p>
-                            <p style={{ fontSize: 12, color: colors.textMuted, margin: '4px 0 0 0' }}>{activity.user} • {activity.time}</p>
-                          </div>
-                        </div>
-                      ))}
+            {(selectedMatter.filingDate || selectedMatter.nextHearing) && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Important Dates</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {selectedMatter.filingDate && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: colors.textSecondary }}>Filing Date</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{new Date(selectedMatter.filingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </div>
+                  )}
+                  {selectedMatter.nextHearing && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: colors.textSecondary }}>Next Hearing</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: accentColor }}>{new Date(selectedMatter.nextHearing).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {selectedMatter.description && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Description</div>
+                <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, lineHeight: 1.6 }}>{selectedMatter.description}</p>
+              </div>
+            )}
+
+            {selectedMatter.balance > 0 && (
+              <div style={{ backgroundColor: colors.bgSecondary, borderRadius: 10, padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <p style={{ fontSize: 12, color: colors.textSecondary, margin: '0 0 4px 0' }}>Outstanding Balance</p>
+                    <p style={{ fontSize: 20, fontWeight: 600, color: '#ff9500', margin: 0 }}>${selectedMatter.balance.toLocaleString()}</p>
                   </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: 40, backgroundColor: colors.bgSecondary, borderRadius: 8 }}>
-                    <History size={36} style={{ color: colors.textMuted, marginBottom: 12 }} />
-                    <p style={{ fontSize: 14, color: colors.textSecondary, margin: 0 }}>No activity yet</p>
-                  </div>
-                )}
+                  <DollarSign size={24} style={{ color: '#ff9500' }} />
+                </div>
               </div>
             )}
           </div>
 
-          <div style={{ padding: 16, borderTop: `1px solid ${colors.border}`, display: 'flex', gap: 8 }}>
+          <div style={{ padding: '16px 24px', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: 10 }}>
             <button
               onClick={() => {
+                const clientMatch = clients.find(c => c.name === selectedMatter.client);
+                const advocateMatch = advocates.find(a => a.name === selectedMatter.responsible);
+                const paralegalMatch = paralegals.find(p => p.name === selectedMatter.paralegal);
                 setEditMatterForm({
-                  name: selectedMatter.name,
-                  client: selectedMatter.client,
-                  clientPhone: selectedMatter.clientPhone || '',
-                  clientEmail: selectedMatter.clientEmail || '',
-                  practiceArea: selectedMatter.practiceArea,
-                  responsible: selectedMatter.responsible,
-                  status: selectedMatter.status,
-                  description: selectedMatter.description
+                  title: selectedMatter.name,
+                  description: selectedMatter.description || '',
+                  category: selectedMatter.category || selectedMatter.practiceArea || '',
+                  subcategory: selectedMatter.subcategory || '',
+                  clientId: clientMatch?.id || '',
+                  advocateId: advocateMatch?.id || '',
+                  paralegalId: paralegalMatch?.id || '',
+                  courtName: selectedMatter.courtName || '',
+                  courtLocation: selectedMatter.courtLocation || '',
+                  judgeAssigned: selectedMatter.judgeAssigned || '',
+                  filingDate: selectedMatter.filingDate || '',
+                  nextHearing: selectedMatter.nextHearing || '',
+                  opposingParty: selectedMatter.opposingParty || '',
+                  caseAmount: selectedMatter.caseAmount ? String(selectedMatter.caseAmount) : '',
+                  priority: selectedMatter.priority || 'Medium',
+                  tags: selectedMatter.tags?.filter(t => t !== 'Priority').join(', ') || '',
+                  status: selectedMatter.status || 'Open'
                 });
                 setShowEditMatterModal(true);
               }}
-              style={{ flex: 1, padding: '10px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: colors.text }}
+              style={{ flex: 1, padding: '10px', backgroundColor: colors.bgTertiary, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', color: colors.text, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             >
               <Edit3 size={16} /> Edit
             </button>
             <button
               onClick={() => setShowShareModal(true)}
-              style={{ flex: 1, padding: '10px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: colors.text }}
+              style={{ flex: 1, padding: '10px', backgroundColor: colors.bgTertiary, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', color: colors.text, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             >
               <Share2 size={16} /> Share
             </button>
-            <button
-              onClick={() => setActiveTab('billing')}
-              style={{ padding: '10px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, cursor: 'pointer' }}
-              title="View Billing"
-            >
-              <DollarSign size={16} style={{ color: colors.textSecondary }} />
-            </button>
           </div>
         </div>
       )} */}
-
-      {/* {showUploadModal && (
-        <div onClick={() => setShowUploadModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 24, width: 420, maxWidth: '90%', boxShadow: '0 25px 50px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: 0 }}>Upload Document</h3>
-              <button onClick={() => setShowUploadModal(false)} style={{ padding: 8, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 6 }}>
-                <X size={20} style={{ color: colors.textSecondary }} />
-              </button>
-            </div>
-
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              style={{ border: `2px dashed ${colors.border}`, borderRadius: 12, padding: 40, textAlign: 'center', cursor: 'pointer', marginBottom: 20 }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = accentColor}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = colors.border}
-            >
-              <Upload size={40} style={{ color: colors.textSecondary, marginBottom: 12 }} />
-              <p style={{ fontSize: 15, fontWeight: 500, color: colors.text, margin: '0 0 4px 0' }}>Click to upload or drag and drop</p>
-              <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0 }}>PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max 50MB)</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                style={{ display: 'none' }}
-                onChange={handleFileUpload}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                multiple
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => setShowUploadModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', color: colors.text }}>
-                Cancel
-              </button>
-              <button onClick={() => fileInputRef.current?.click()} style={{ flex: 1, padding: '12px', backgroundColor: accentColor, color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: 'none' }}>
-                Browse Files
-              </button>
-            </div>
-          </div>
-        </div>
-      )} */}
-
-      {showNewMatterModal && (
-        <div onClick={() => setShowNewMatterModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 24, width: 500, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>New Matter</h3>
-              <button onClick={() => setShowNewMatterModal(false)} style={{ padding: 8, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 6 }}>
-                <X size={20} style={{ color: colors.textSecondary }} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Matter Name *</label>
-                <input
-                  value={newMatterForm.name}
-                  onChange={(e) => setNewMatterForm({ ...newMatterForm, name: e.target.value })}
-                  placeholder="e.g., Smith vs. Johnson Corp"
-                  style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Client *</label>
-                  <select
-                    value={newMatterForm.client}
-                    onChange={(e) => setNewMatterForm({ ...newMatterForm, client: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
-                    <option value="">Select client</option>
-                    <option value="Alex Thompson">Alex Thompson</option>
-                    <option value="James Miller">James Miller</option>
-                    <option value="Emily Davis">Emily Davis</option>
-                    <option value="Robert Wilson">Robert Wilson</option>
-                    <option value="Patricia Johnson">Patricia Johnson</option>
-                    <option value="Lisa Anderson">Lisa Anderson</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Practice Area *</label>
-                  <select
-                    value={newMatterForm.practiceArea}
-                    onChange={(e) => setNewMatterForm({ ...newMatterForm, practiceArea: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
-                    <option value="">Select practice area</option>
-                    {practiceAreas.map((pa) => <option key={pa} value={pa}>{pa}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Responsible Attorney</label>
-                  <select
-                    value={newMatterForm.responsible}
-                    onChange={(e) => setNewMatterForm({ ...newMatterForm, responsible: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
-                    <option value="">Select attorney</option>
-                    <option value="Sarah Jenkins">Sarah Jenkins</option>
-                    <option value="Michael Brown">Michael Brown</option>
-                    <option value="Emily Watson">Emily Watson</option>
-                    <option value="James Lee">James Lee</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Status</label>
-                  <select
-                    value={newMatterForm.status}
-                    onChange={(e) => setNewMatterForm({ ...newMatterForm, status: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
-                    {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Description</label>
-                <textarea
-                  value={newMatterForm.description}
-                  onChange={(e) => setNewMatterForm({ ...newMatterForm, description: e.target.value })}
-                  placeholder="Brief description of the matter..."
-                  style={{ width: '100%', minHeight: 100, padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-              <button onClick={() => setShowNewMatterModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', color: colors.text }}>
-                Cancel
-              </button>
-              <button
-                onClick={createMatter}
-                style={{ flex: 1, padding: '12px', backgroundColor: accentColor, color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: 'none' }}
-              >
-                Create Matter
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showEditMatterModal && selectedMatter && (
-        <div onClick={() => setShowEditMatterModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150, padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 24, width: 500, maxWidth: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 600, color: colors.text, margin: 0 }}>Edit Matter</h3>
-              <button onClick={() => setShowEditMatterModal(false)} style={{ padding: 8, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 6 }}>
-                <X size={20} style={{ color: colors.textSecondary }} />
+        <div onClick={() => setShowEditMatterModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150, backdropFilter: 'blur(4px)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, width: 640, maxWidth: '95%', maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: colors.text, margin: 0 }}>Edit Matter</h3>
+                <p style={{ fontSize: 13, color: colors.textSecondary, margin: '4px 0 0 0' }}>{selectedMatter.number}</p>
+              </div>
+              <button onClick={() => setShowEditMatterModal(false)} style={{ padding: 8, backgroundColor: colors.bgTertiary, border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} style={{ color: colors.textSecondary }} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Basic Information</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ position: 'relative' }}>
+                    <input value={editMatterForm.title} onChange={(e) => setEditMatterForm({ ...editMatterForm, title: e.target.value })} placeholder="Matter Title" style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                    <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#ef4444', fontWeight: 600 }}>*</span>
+                  </div>
+                  <textarea value={editMatterForm.description} onChange={(e) => setEditMatterForm({ ...editMatterForm, description: e.target.value })} placeholder="Description (optional)" rows={2} style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, resize: 'none', boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        value={editMatterForm.category} 
+                        onChange={(e) => setEditMatterForm({ ...editMatterForm, category: e.target.value, subcategory: '' })} 
+                        placeholder="Category" 
+                        style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }} 
+                      />
+                      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#ef4444', fontWeight: 600 }}>*</span>
+                    </div>
+                    <input 
+                      value={editMatterForm.subcategory} 
+                      onChange={(e) => setEditMatterForm({ ...editMatterForm, subcategory: e.target.value })} 
+                      placeholder="Subcategory" 
+                      style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }} 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Team Assignment</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <div style={{ position: 'relative' }}>
+                    <input value={editMatterForm.clientId} onChange={(e) => setEditMatterForm({ ...editMatterForm, clientId: e.target.value })} placeholder="Client ID" style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }} />
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input value={editMatterForm.advocateId} onChange={(e) => setEditMatterForm({ ...editMatterForm, advocateId: e.target.value })} placeholder="Advocate ID" style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }} />
+                  </div>
+                  <input value={editMatterForm.paralegalId} onChange={(e) => setEditMatterForm({ ...editMatterForm, paralegalId: e.target.value })} placeholder="Paralegal ID (optional)" style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Court Details</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <input value={editMatterForm.courtName} onChange={(e) => setEditMatterForm({ ...editMatterForm, courtName: e.target.value })} placeholder="Court Name" style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                  <input value={editMatterForm.courtLocation} onChange={(e) => setEditMatterForm({ ...editMatterForm, courtLocation: e.target.value })} placeholder="Court Location" style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <input value={editMatterForm.judgeAssigned} onChange={(e) => setEditMatterForm({ ...editMatterForm, judgeAssigned: e.target.value })} placeholder="Judge Assigned" style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                  <input value={editMatterForm.opposingParty} onChange={(e) => setEditMatterForm({ ...editMatterForm, opposingParty: e.target.value })} placeholder="Opposing Party" style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Dates & Schedule</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ position: 'relative' }}>
+                    <label style={{ position: 'absolute', top: -8, left: 10, fontSize: 10, color: colors.textSecondary, backgroundColor: colors.input, padding: '0 4px' }}>Filing Date</label>
+                    <input type="date" value={editMatterForm.filingDate} onChange={(e) => setEditMatterForm({ ...editMatterForm, filingDate: e.target.value })} style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <label style={{ position: 'absolute', top: -8, left: 10, fontSize: 10, color: colors.textSecondary, backgroundColor: colors.input, padding: '0 4px' }}>Next Hearing</label>
+                    <input type="date" value={editMatterForm.nextHearing} onChange={(e) => setEditMatterForm({ ...editMatterForm, nextHearing: e.target.value })} style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Matter Name *</label>
-                <input
-                  value={editMatterForm.name}
-                  onChange={(e) => setEditMatterForm({ ...editMatterForm, name: e.target.value })}
-                  style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Client Name</label>
-                  <input
-                    value={editMatterForm.client}
-                    onChange={(e) => setEditMatterForm({ ...editMatterForm, client: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Practice Area</label>
-                  <select
-                    value={editMatterForm.practiceArea}
-                    onChange={(e) => setEditMatterForm({ ...editMatterForm, practiceArea: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
-                    {practiceAreas.map((pa) => <option key={pa} value={pa}>{pa}</option>)}
+                <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Case Settings</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, fontSize: 14 }}>$</span>
+                    <input type="number" value={editMatterForm.caseAmount} onChange={(e) => setEditMatterForm({ ...editMatterForm, caseAmount: e.target.value })} placeholder="Amount" style={{ width: '100%', padding: '11px 14px 11px 26px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
+                  </div>
+                  <select value={editMatterForm.priority} onChange={(e) => setEditMatterForm({ ...editMatterForm, priority: e.target.value })} style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}>
+                    {priorities.map((p) => <option key={p} value={p}>{p} Priority</option>)}
                   </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Responsible Attorney</label>
-                  <select
-                    value={editMatterForm.responsible}
-                    onChange={(e) => setEditMatterForm({ ...editMatterForm, responsible: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
-                    <option value="Sarah Jenkins">Sarah Jenkins</option>
-                    <option value="Michael Brown">Michael Brown</option>
-                    <option value="Emily Watson">Emily Watson</option>
-                    <option value="James Lee">James Lee</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Status</label>
-                  <select
-                    value={editMatterForm.status}
-                    onChange={(e) => setEditMatterForm({ ...editMatterForm, status: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
-                  >
+                  <select value={editMatterForm.status} onChange={(e) => setEditMatterForm({ ...editMatterForm, status: e.target.value })} style={{ padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, backgroundColor: colors.input, color: colors.text }}>
                     {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: colors.text, display: 'block', marginBottom: 8 }}>Description</label>
-                <textarea
-                  value={editMatterForm.description}
-                  onChange={(e) => setEditMatterForm({ ...editMatterForm, description: e.target.value })}
-                  style={{ width: '100%', minHeight: 100, padding: '12px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }}
-                />
+                <input value={editMatterForm.tags} onChange={(e) => setEditMatterForm({ ...editMatterForm, tags: e.target.value })} placeholder="Tags (comma separated, e.g., VIP, Urgent)" style={{ width: '100%', padding: '11px 14px', border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box', backgroundColor: colors.input, color: colors.text }} />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: 12, backgroundColor: colors.bgSecondary }}>
               <button onClick={() => setShowEditMatterModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', color: colors.text }}>
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  setMatters(matters.map((m) => m.id === selectedMatter.id ? {
-                    ...m,
-                    name: editMatterForm.name,
-                    client: editMatterForm.client,
-                    clientPhone: editMatterForm.clientPhone,
-                    clientEmail: editMatterForm.clientEmail,
-                    practiceArea: editMatterForm.practiceArea,
-                    responsible: editMatterForm.responsible,
-                    status: editMatterForm.status,
-                    description: editMatterForm.description,
-                    lastActivity: 'Just now'
-                  } : m));
-                  setSelectedMatter({
-                    ...selectedMatter,
-                    name: editMatterForm.name,
-                    client: editMatterForm.client,
-                    clientPhone: editMatterForm.clientPhone,
-                    clientEmail: editMatterForm.clientEmail,
-                    practiceArea: editMatterForm.practiceArea,
-                    responsible: editMatterForm.responsible,
-                    status: editMatterForm.status,
-                    description: editMatterForm.description
-                  });
-                  setShowEditMatterModal(false);
-                  addNotification('success', 'Matter updated successfully');
+                onClick={updateMatter}
+                disabled={!editMatterForm.title.trim() || !editMatterForm.category}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  backgroundColor: accentColor,
+                  color: '#fff',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: (!editMatterForm.title.trim() || !editMatterForm.category) ? 'not-allowed' : 'pointer',
+                  border: 'none',
+                  opacity: (!editMatterForm.title.trim() || !editMatterForm.category) ? 0.5 : 1,
+                  transition: 'opacity 0.2s'
                 }}
-                style={{ flex: 1, padding: '12px', backgroundColor: accentColor, color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: 'none' }}
               >
                 Save Changes
               </button>

@@ -40,6 +40,7 @@ import BillingPageReact from "@/advocate/BillingPageReact";
 import AppIntegrationsPageReact from "@/advocate/AppIntegrationsPageReact";
 import Timeline from "@/advocate/Timeline";
 import AdvocateSettings from "@/advocate/AdvocateSettings";
+import ConnectionsPage from "@/advocate/ConnectionsPage";
 
 function App() {
   return (
@@ -124,6 +125,7 @@ function App() {
             <Route path="timeline" element={<Timeline />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="documents" element={<DocumentsPage />} />
+            <Route path="connections" element={<ConnectionsPage />} />
             <Route path="billing" element={<BillingPageReact />} />
             <Route path="messages" element={<MessagesPageReact />} />
             <Route path="app-integrations" element={<AppIntegrationsPageReact />} />

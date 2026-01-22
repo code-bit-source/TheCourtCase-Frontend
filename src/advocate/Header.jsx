@@ -222,10 +222,36 @@ export default function Header({ addNotification = () => {}, clientNotifications
   return (
     <header className="productivity-header" style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.header, position: 'sticky', top: 0, zIndex: 80, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-        {/* <button onClick={onOpenMobileMenu} className="nav-icon-btn text-black mobile-menu-btn" title="Open menu" style={{ marginRight: 4 }}>
+        <button onClick={onOpenMobileMenu} className="nav-icon-btn text-black mobile-menu-btn" title="Open menu" style={{ marginRight: 4 }}>
           <Menu size={20} /> 
-        </button> */}
+        </button>
         
+       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    
+    {/* Logo / Icon */}
+    {/* <div
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        background: `linear-gradient(135deg, ${accentColor} 0%, #7c3aed 100%)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: `0 2px 6px ${accentColor}40`
+      }}
+    >
+      <Scale size={18} color="#fff" />
+    </div> */}
+
+    {/* Brand Name */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <span className="text-black text-xl font-bold uppercase">Advocate</span>
+      <span style={{ fontSize: 12, color: '#666' }}>
+        Legal System
+      </span>
+    </div>
+  </div>
         {/* <div className="header-branding" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32,
@@ -242,7 +268,6 @@ export default function Header({ addNotification = () => {}, clientNotifications
           </div>
           <span className=''></span>
         </div>  */}
-        <span className='text-black text-3xl uppercase font-bold'>Advocate</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

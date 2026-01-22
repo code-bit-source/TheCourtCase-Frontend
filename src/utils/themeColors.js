@@ -1,0 +1,22 @@
+export const getThemeColors = (isDark, accentColor) => ({
+  bg: isDark ? '#0f0f1a' : '#ffffff',
+  bgSecondary: isDark ? '#1a1a2e' : '#fafafa',
+  bgTertiary: isDark ? '#16213e' : '#f5f5f5',
+  bgHover: isDark ? '#252540' : '#f0f0f0',
+  text: isDark ? '#ffffff' : '#1f1f1f',
+  textSecondary: isDark ? '#a0a0a0' : '#808080',
+  textMuted: isDark ? '#707070' : '#b0b0b0',
+  border: isDark ? '#2d2d44' : '#e8e8e8',
+  borderLight: isDark ? '#252540' : '#f0f0f0',
+  card: isDark ? '#1a1a2e' : '#ffffff',
+  cardHover: isDark ? '#252540' : '#fafafa',
+  accent: accentColor,
+  accentLight: isDark ? `${accentColor}30` : `${accentColor}15`,
+  success: '#00c853',
+  warning: '#ff9500',
+  error: '#eb4d3d',
+  sidebar: isDark ? '#0f0f1a' : '#ffffff',
+  header: isDark ? '#0f0f1a' : '#ffffff',
+  input: isDark ? '#1a1a2e' : '#ffffff',
+  inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
+});

@@ -1,33 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getThemeColors } from '../utils/themeColors';
 import Sidebar, { MobileSidebarDrawer, sidebarStyles } from './Sidebar';
 import Header, { headerStyles } from './Header';
 import Modal from './Modal';
 import Toast from './Toast';
-
-const getThemeColors = (isDark, accentColor) => ({
-  bg: isDark ? '#0f0f1a' : '#ffffff',
-  bgSecondary: isDark ? '#1a1a2e' : '#fafafa',
-  bgTertiary: isDark ? '#16213e' : '#f5f5f5',
-  bgHover: isDark ? '#252540' : '#f0f0f0',
-  text: isDark ? '#ffffff' : '#1f1f1f',
-  textSecondary: isDark ? '#a0a0a0' : '#808080',
-  textMuted: isDark ? '#707070' : '#b0b0b0',
-  border: isDark ? '#2d2d44' : '#e8e8e8',
-  borderLight: isDark ? '#252540' : '#f0f0f0',
-  card: isDark ? '#1a1a2e' : '#ffffff',
-  cardHover: isDark ? '#252540' : '#fafafa',
-  accent: accentColor,
-  accentLight: isDark ? `${accentColor}30` : `${accentColor}15`,
-  success: '#00c853',
-  warning: '#ff9500',
-  error: '#eb4d3d',
-  sidebar: isDark ? '#0f0f1a' : '#ffffff',
-  header: isDark ? '#0f0f1a' : '#ffffff',
-  input: isDark ? '#1a1a2e' : '#ffffff',
-  inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
-});
 
 export default function AdvocateHome() {
   const navigate = useNavigate();
@@ -54,7 +32,7 @@ export default function AdvocateHome() {
   const userInfo = {
     name: user?.name || 'Alex Thompson',
     email: user?.email || 'alex.thompson@email.com',
-    profilePic: user?.profilePic || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
+    profilePic: user?.profilePicture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
   };
 
   const clientNotifications = [
@@ -119,7 +97,7 @@ export default function AdvocateHome() {
       <Header
         addNotification={addNotification}
         clientNotifications={clientNotifications}
-        onOpenSettings={() => setActiveView('settings')}
+        onOpenSettings={() => handleViewChange('settings')}
         onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
         isDark={isDark}
         accentColor={accentColor}

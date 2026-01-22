@@ -1,34 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { getThemeColors } from '../utils/themeColors';
 import {
   Scale, LayoutDashboard, FileText, MessageSquare,
   Calendar, Settings, LogOut, ChevronRight, ChevronLeft,
   ChevronDown, User, Briefcase, ListTodo, History,
-  CreditCard, Puzzle, X
+  CreditCard, Puzzle, X, Users
 } from 'lucide-react';
 import Modal from './Modal';
-
-const getThemeColors = (isDark, accentColor) => ({
-  bg: isDark ? '#0f0f1a' : '#ffffff',
-  bgSecondary: isDark ? '#1a1a2e' : '#fafafa',
-  bgTertiary: isDark ? '#16213e' : '#f5f5f5',
-  bgHover: isDark ? '#252540' : '#f0f0f0',
-  text: isDark ? '#ffffff' : '#1f1f1f',
-  textSecondary: isDark ? '#a0a0a0' : '#808080',
-  textMuted: isDark ? '#707070' : '#b0b0b0',
-  border: isDark ? '#2d2d44' : '#e8e8e8',
-  borderLight: isDark ? '#252540' : '#f0f0f0',
-  card: isDark ? '#1a1a2e' : '#ffffff',
-  cardHover: isDark ? '#252540' : '#fafafa',
-  accent: accentColor,
-  accentLight: isDark ? `${accentColor}30` : `${accentColor}15`,
-  success: '#00c853',
-  warning: '#ff9500',
-  error: '#eb4d3d',
-  sidebar: isDark ? '#0f0f1a' : '#ffffff',
-  header: isDark ? '#0f0f1a' : '#ffffff',
-  input: isDark ? '#1a1a2e' : '#ffffff',
-  inputBorder: isDark ? '#2d2d44' : '#e0e0e0'
-});
 
 const navItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -38,6 +16,7 @@ const navItems = [
   { id: 'timeline', icon: History, label: 'Timeline' },
   { id: 'calendar', icon: Calendar, label: 'Calendar' },
   { id: 'documents', icon: FileText, label: 'Documents' },
+  { id: 'connections', icon: Users, label: 'Connections' },
   { id: 'billing', icon: CreditCard, label: 'Payments' },
   { id: 'messages', icon: MessageSquare, label: 'Messages' },
   { id: 'app-integrations', icon: Puzzle, label: 'App Integrations' }
@@ -89,7 +68,7 @@ export default function Sidebar({ activeView, setActiveView, isExpanded, toggleS
             style={{ left: !isExpanded && !isMobile ? '50%' : '8px', transform: !isExpanded && !isMobile ? 'translateX(-50%)' : 'none', background: colors.card, border: `1px solid ${colors.border}` }}
           >
             <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.borderLight}`, backgroundColor: colors.bgSecondary }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name || 'Alex Thompson'}</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name  }</p>
               <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>Advocate</p>
             </div>
             <div style={{ padding: '6px 0' }}>
@@ -158,7 +137,7 @@ export default function Sidebar({ activeView, setActiveView, isExpanded, toggleS
           {(isExpanded || isMobile) && (
             <>
               <div style={{ flex: 1, textAlign: 'left', overflow: 'hidden' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userInfo.name || 'Alex Thompson'}</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: colors.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userInfo.name  }</p>
                 <p style={{ fontSize: 11, color: colors.textSecondary, margin: 0 }}>Advocate</p>
               </div>
               <ChevronDown size={16} style={{ color: colors.textSecondary, transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
@@ -307,7 +286,7 @@ export function MobileSidebarDrawer({ isOpen, onClose, activeView, setActiveView
             {showProfileMenu && (
               <div className="profile-menu-popup fade-in" style={{ bottom: '100%', marginBottom: 8, background: colors.card, border: `1px solid ${colors.border}` }}>
                 <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.borderLight}`, backgroundColor: colors.bgSecondary }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name || 'Alex Thompson'}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: colors.text, margin: 0 }}>{userInfo.name }</p>
                   <p style={{ fontSize: 12, color: colors.textSecondary, margin: '2px 0 0 0' }}>Advocate</p>
                 </div>
                 <div style={{ padding: '6px 0' }}>
@@ -363,7 +342,7 @@ export function MobileSidebarDrawer({ isOpen, onClose, activeView, setActiveView
               />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>Alex Thompson</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: colors.text, margin: 0 }}>{userInfo.name}</p>
                 <p style={{ fontSize: 12, color: colors.textSecondary, margin: 0 }}>Advocate</p>
               </div>
               <ChevronDown size={18} style={{ color: colors.textSecondary, transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
