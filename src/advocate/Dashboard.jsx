@@ -14,6 +14,8 @@ import {
   CreditCard, AlertTriangle, Eye,
   Briefcase, ListTodo, Plus, BarChart3
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const getThemeColors = (isDark, accentColor) => ({
   bg: isDark ? '#0f0f1a' : '#ffffff',
@@ -39,6 +41,27 @@ const getThemeColors = (isDark, accentColor) => ({
 });
 
 export default function DashboardPage() {
+  const [user, setuser] = useState([])
+  //user data 
+  useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get("http://localhost:5000/api/protected/me", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setuser(res.data.user);
+      console.log(user)
+    } catch (err) {
+      console.log("Profile load failed", err);
+    }
+  };
+
+  fetchProfile();
+}, []);
+
   const [activeView, setActiveView] = useState('dashboard');
   const isDark = false;
   const accentColor = '#4772fa';
@@ -79,187 +102,151 @@ export default function DashboardPage() {
   const [taskStats, setTaskStats] = useState(null);
 
   // Fetch data from API
-  useEffect(() => {
-    const fetchCases = async () => {
-      setLoading(prev => ({ ...prev, cases: true }));
-      try {
-        const response = await caseService.getCases();
-        setCases(response.data || []);
-        setError(prev => ({ ...prev, cases: null }));
-      } catch (err) {
-        console.error('Error fetching cases:', err);
-        setError(prev => ({ ...prev, cases: 'Failed to load cases' }));
-      } finally {
-        setLoading(prev => ({ ...prev, cases: false }));
-      }
-    };
+  // useEffect(() => {
+  //   const fetchCases = async () => {
+  //     setLoading(prev => ({ ...prev, cases: true }));
+  //     try {
+  //       const response = await caseService.getCases();
+  //       setCases(response.data || []);
+  //       setError(prev => ({ ...prev, cases: null }));
+  //     } catch (err) {
+  //       console.error('Error fetching cases:', err);
+  //       setError(prev => ({ ...prev, cases: 'Failed to load cases' }));
+  //     } finally {
+  //       setLoading(prev => ({ ...prev, cases: false }));
+  //     }
+  //   };
 
-    const fetchTasks = async () => {
-      setLoading(prev => ({ ...prev, tasks: true }));
-      try {
-        const response = await taskService.getTasks();
-        setTasks(response.data || []);
-        setError(prev => ({ ...prev, tasks: null }));
-      } catch (err) {
-        console.error('Error fetching tasks:', err);
-        setError(prev => ({ ...prev, tasks: 'Failed to load tasks' }));
-      } finally {
-        setLoading(prev => ({ ...prev, tasks: false }));
-      }
-    };
+  //   const fetchTasks = async () => {
+  //     setLoading(prev => ({ ...prev, tasks: true }));
+  //     try {
+  //       const response = await taskService.getTasks();
+  //       setTasks(response.data || []);
+  //       setError(prev => ({ ...prev, tasks: null }));
+  //     } catch (err) {
+  //       console.error('Error fetching tasks:', err);
+  //       setError(prev => ({ ...prev, tasks: 'Failed to load tasks' }));
+  //     } finally {
+  //       setLoading(prev => ({ ...prev, tasks: false }));
+  //     }
+  //   };
 
-    const fetchDocuments = async () => {
-      setLoading(prev => ({ ...prev, documents: true }));
-      try {
-        const response = await documentService.getDocuments();
-        setDocuments(response.data || []);
-        setError(prev => ({ ...prev, documents: null }));
-      } catch (err) {
-        console.error('Error fetching documents:', err);
-        setError(prev => ({ ...prev, documents: 'Failed to load documents' }));
-      } finally {
-        setLoading(prev => ({ ...prev, documents: false }));
-      }
-    };
+  //   const fetchDocuments = async () => {
+  //     setLoading(prev => ({ ...prev, documents: true }));
+  //     try {
+  //       const response = await documentService.getDocuments();
+  //       setDocuments(response.data || []);
+  //       setError(prev => ({ ...prev, documents: null }));
+  //     } catch (err) {
+  //       console.error('Error fetching documents:', err);
+  //       setError(prev => ({ ...prev, documents: 'Failed to load documents' }));
+  //     } finally {
+  //       setLoading(prev => ({ ...prev, documents: false }));
+  //     }
+  //   };
 
-    const fetchHearings = async () => {
-      setLoading(prev => ({ ...prev, hearings: true }));
-      try {
-        // Assuming we're getting hearings for all cases the user has access to
-        const response = await timelineService.getHearings('all');
-        setHearings(response.data || []);
-        setError(prev => ({ ...prev, hearings: null }));
-      } catch (err) {
-        console.error('Error fetching hearings:', err);
-        setError(prev => ({ ...prev, hearings: 'Failed to load hearings' }));
-      } finally {
-        setLoading(prev => ({ ...prev, hearings: false }));
-      }
-    };
+  //   const fetchHearings = async () => {
+  //     setLoading(prev => ({ ...prev, hearings: true }));
+  //     try {
+  //       // Assuming we're getting hearings for all cases the user has access to
+  //       const response = await timelineService.getHearings('all');
+  //       setHearings(response.data || []);
+  //       setError(prev => ({ ...prev, hearings: null }));
+  //     } catch (err) {
+  //       console.error('Error fetching hearings:', err);
+  //       setError(prev => ({ ...prev, hearings: 'Failed to load hearings' }));
+  //     } finally {
+  //       setLoading(prev => ({ ...prev, hearings: false }));
+  //     }
+  //   };
 
-    const fetchActivities = async () => {
-      setLoading(prev => ({ ...prev, activities: true }));
-      try {
-        const response = await activityService.getRecentActivities();
-        setActivities(response.data || []);
-        setError(prev => ({ ...prev, activities: null }));
-      } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError(prev => ({ ...prev, activities: 'Failed to load activities' }));
-      } finally {
-        setLoading(prev => ({ ...prev, activities: false }));
-      }
-    };
+  //   const fetchActivities = async () => {
+  //     setLoading(prev => ({ ...prev, activities: true }));
+  //     try {
+  //       const response = await activityService.getRecentActivities();
+  //       setActivities(response.data || []);
+  //       setError(prev => ({ ...prev, activities: null }));
+  //     } catch (err) {
+  //       console.error('Error fetching activities:', err);
+  //       setError(prev => ({ ...prev, activities: 'Failed to load activities' }));
+  //     } finally {
+  //       setLoading(prev => ({ ...prev, activities: false }));
+  //     }
+  //   };
 
-    const fetchReminders = async () => {
-      setLoading(prev => ({ ...prev, reminders: true }));
-      try {
-        const response = await reminderService.getUpcomingReminders();
-        setReminders(response.data || []);
-        setError(prev => ({ ...prev, reminders: null }));
-      } catch (err) {
-        console.error('Error fetching reminders:', err);
-        setError(prev => ({ ...prev, reminders: 'Failed to load reminders' }));
-      } finally {
-        setLoading(prev => ({ ...prev, reminders: false }));
-      }
-    };
+  //   const fetchReminders = async () => {
+  //     setLoading(prev => ({ ...prev, reminders: true }));
+  //     try {
+  //       const response = await reminderService.getUpcomingReminders();
+  //       setReminders(response.data || []);
+  //       setError(prev => ({ ...prev, reminders: null }));
+  //     } catch (err) {
+  //       console.error('Error fetching reminders:', err);
+  //       setError(prev => ({ ...prev, reminders: 'Failed to load reminders' }));
+  //     } finally {
+  //       setLoading(prev => ({ ...prev, reminders: false }));
+  //     }
+  //   };
 
-    const fetchCaseStats = async () => {
-      try {
-        const response = await caseService.getCaseStats();
-        setCaseStats(response.data || null);
-      } catch (err) {
-        console.error('Error fetching case stats:', err);
-      }
-    };
+  //   const fetchCaseStats = async () => {
+  //     try {
+  //       const response = await caseService.getCaseStats();
+  //       setCaseStats(response.data || null);
+  //     } catch (err) {
+  //       console.error('Error fetching case stats:', err);
+  //     }
+  //   };
 
-    const fetchTaskStats = async () => {
-      try {
-        const response = await taskService.getTaskStats();
-        setTaskStats(response.data || null);
-      } catch (err) {
-        console.error('Error fetching task stats:', err);
-      }
-    };
+  //   const fetchTaskStats = async () => {
+  //     try {
+  //       const response = await taskService.getTaskStats();
+  //       setTaskStats(response.data || null);
+  //     } catch (err) {
+  //       console.error('Error fetching task stats:', err);
+  //     }
+  //   };
 
-    // Call all fetch functions
-    fetchCases();
-    fetchTasks();
-    fetchDocuments();
-    fetchHearings();
-    fetchActivities();
-    fetchReminders();
-    fetchCaseStats();
-    fetchTaskStats();
-  }, []);
-
-  // Prepare data for UI
-  const personalStats = [
-    {
-      label: 'My Cases',
-      value: loading.cases ? '...' : (cases.length || '0'),
-      icon: Briefcase,
-      color: '#4772fa',
-      desc: caseStats ? `${caseStats.activeHearings || 0} active hearings` : 'Loading...',
-      action: () => setActiveView('case-summary')
-    },
-    {
-      label: 'My Tasks',
-      value: loading.tasks ? '...' : (tasks.length || '0'),
-      icon: ListTodo,
-      color: '#ff9500',
-      desc: taskStats ? `${taskStats.dueToday || 0} due today` : 'Loading...',
-      action: () => setActiveView('tasks')
-    },
-    {
-      label: 'My Hearings',
-      value: loading.hearings ? '...' : (hearings.length || '0'),
-      icon: Calendar,
-      color: '#00c853',
-      desc: hearings.length > 0 ? `Next: ${new Date(hearings[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'None scheduled',
-      action: () => setActiveView('calendar')
-    },
-    {
-      label: 'My Documents',
-      value: loading.documents ? '...' : (documents.length || '0'),
-      icon: FileText,
-      color: '#9c27b0',
-      desc: documents.filter(d => d.status === 'pending_review').length + ' pending review',
-      action: () => setActiveView('documents')
-    }
-  ];
+  //   // Call all fetch functions
+  //   fetchCases();
+  //   fetchTasks();
+  //   fetchDocuments();
+  //   fetchHearings();
+  //   fetchActivities();
+  //   fetchReminders();
+  //   fetchCaseStats();
+  //   fetchTaskStats();
+  // }, []);
 
   // Use case stats for firm stats if available, otherwise use hardcoded data
   const firmStats = [
-    {
-      label: 'Total Cases',
-      value: caseStats ? caseStats.totalCases : '...',
-      icon: Briefcase,
-      color: '#4772fa',
-      desc: caseStats ? `${caseStats.activeThisMonth} active this month` : 'Loading...'
-    },
-    {
-      label: 'Firm Hearings',
-      value: caseStats ? caseStats.totalHearings : '...',
-      icon: Calendar,
-      color: '#00c853',
-      desc: 'This week'
-    },
-    {
-      label: 'Team Members',
-      value: caseStats ? caseStats.teamMembers : '...',
-      icon: Users,
-      color: '#9c27b0',
-      desc: caseStats ? `${caseStats.advocates} advocates, ${caseStats.staff} staff` : 'Loading...'
-    },
-    {
-      label: canViewFinancials ? 'Revenue' : 'Pending Tasks',
-      value: canViewFinancials ? (caseStats ? `$${caseStats.revenue / 1000}K` : '...') : (taskStats ? taskStats.pendingTasks : '...'),
-      icon: canViewFinancials ? CreditCard : ListTodo,
-      color: '#ff9500',
-      desc: canViewFinancials ? 'This month' : 'Across firm'
-    }
+    // {
+    //   label: 'Total Cases',
+    //   value: caseStats ? caseStats.totalCases : '...',
+    //   icon: Briefcase,
+    //   color: '#4772fa',
+    //   desc: caseStats ? `${caseStats.activeThisMonth} active this month` : 'Loading...'
+    // },
+    // {
+    //   label: 'Firm Hearings',
+    //   value: caseStats ? caseStats.totalHearings : '...',
+    //   icon: Calendar,
+    //   color: '#00c853',
+    //   desc: 'This week'
+    // },
+    // {
+    //   label: 'Team Members',
+    //   value: caseStats ? caseStats.teamMembers : '...',
+    //   icon: Users,
+    //   color: '#9c27b0',
+    //   desc: caseStats ? `${caseStats.advocates} advocates, ${caseStats.staff} staff` : 'Loading...'
+    // },
+    // {
+    //   label: canViewFinancials ? 'Revenue' : 'Pending Tasks',
+    //   value: canViewFinancials ? (caseStats ? `$${caseStats.revenue / 1000}K` : '...') : (taskStats ? taskStats.pendingTasks : '...'),
+    //   icon: canViewFinancials ? CreditCard : ListTodo,
+    //   color: '#ff9500',
+    //   desc: canViewFinancials ? 'This month' : 'Across firm'
+    // }
   ];
 
   // Map activities to myUpdates format
@@ -295,18 +282,7 @@ export default function DashboardPage() {
       time: activity.createdAt // Format this as needed
     };
   });
-
-  // If no activities yet, use hardcoded data
-  // if (myUpdates.length === 0) {
-  //   myUpdates.push(
-  //     { icon: Calendar, color: '#4772fa', title: 'Hearing Scheduled', desc: 'Thompson vs. Global Corp - Final Arguments', time: '2 days ago' },
-  //     { icon: FileText, color: '#00c853', title: 'Document Uploaded', desc: 'Evidence_Ex_A.docx uploaded successfully', time: '5 days ago' },
-  //     { icon: Gavel, color: '#9c27b0', title: 'Court Order Received', desc: 'Interim stay granted on Case #WP/2024/102', time: '1 week ago' },
-  //     { icon: Bell, color: '#ff9500', title: 'Deadline Reminder', desc: 'Counter-affidavit due in 3 days', time: '1 week ago' }
-  //   );
-  // }
-
-  // Map firm activities (using the same activities for now)
+ 
   const firmActivity = activities.slice(0, 5).map(activity => {
     let icon, color;
     switch (activity.type) {
@@ -345,18 +321,7 @@ export default function DashboardPage() {
     };
   });
 
-  // If no firm activities yet, use hardcoded data
-  // if (firmActivity.length === 0) {
-  //   firmActivity.push(
-  //     { icon: Briefcase, color: '#4772fa', title: 'New Case Filed', desc: 'Miller vs. Tech Corp assigned to Sarah J.', time: '1 hour ago', user: 'System' },
-  //     { icon: FileText, color: '#00c853', title: 'Document Submitted', desc: 'Evidence bundle for Case #441 uploaded', time: '3 hours ago', user: 'David Chen' },
-  //     { icon: Calendar, color: '#ff9500', title: 'Hearing Completed', desc: 'Johnson Estate hearing concluded', time: '5 hours ago', user: 'Michael Brown' },
-  //     { icon: CreditCard, color: '#9c27b0', title: 'Payment Received', desc: '$12,500 from Global Industries', time: 'Yesterday', user: 'Finance' },
-  //     { icon: Users, color: '#4772fa', title: 'Team Update', desc: 'New paralegal Emily W. joined the firm', time: '2 days ago', user: 'HR' }
-  //   );
-  // }
-
-  // Map tasks
+   
   const myTasks = tasks.slice(0, 4).map(task => ({
     id: task.id,
     title: task.title,
@@ -365,17 +330,7 @@ export default function DashboardPage() {
     case: task.case?.name || 'Unknown Case'
   }));
 
-  // If no tasks yet, use hardcoded data
-  // if (myTasks.length === 0) {
-  //   myTasks.push(
-  //     { id: 1, title: 'Review counter-affidavit draft', priority: 3, dueDate: 'Today', case: 'Thompson vs. Global' },
-  //     { id: 2, title: 'Prepare evidence summary', priority: 2, dueDate: 'Tomorrow', case: 'Miller vs. Tech' },
-  //     { id: 3, title: 'Client meeting preparation', priority: 2, dueDate: 'Mar 20', case: 'Johnson Estate' },
-  //     { id: 4, title: 'File motion for extension', priority: 1, dueDate: 'Mar 22', case: 'Smith Litigation' }
-  //   );
-  // }
-
-  // Map hearings
+  
   const myHearings = hearings.slice(0, 3).map(hearing => ({
     date: new Date(hearing.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     time: new Date(hearing.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }),
@@ -383,25 +338,6 @@ export default function DashboardPage() {
     court: hearing.location || 'Court Location Not Specified',
     type: hearing.type || 'Hearing'
   }));
-
-  // If no hearings yet, use hardcoded data
-  // if (myHearings.length === 0) {
-  //   myHearings.push(
-  //     { date: 'Mar 18', time: '10:30 AM', case: 'Thompson vs. Global Corp', court: 'High Court, Room 302', type: 'Final Arguments' },
-  //     { date: 'Mar 22', time: '2:00 PM', case: 'Miller vs. Tech Solutions', court: 'District Court, Room 105', type: 'Preliminary Hearing' },
-  //     { date: 'Mar 25', time: '11:00 AM', case: 'Johnson Estate Matter', court: 'Probate Court, Room 201', type: 'Status Conference' }
-  //   );
-  // }
-
-  // Use case stats for case distribution if available, otherwise use hardcoded data
-  const caseDistribution = caseStats?.distribution || [
-    { stage: 'Filing', count: 12, color: '#4772fa', percent: 8 },
-    { stage: 'Discovery', count: 28, color: '#00c853', percent: 19 },
-    { stage: 'Pre-Trial', count: 35, color: '#ff9500', percent: 24 },
-    { stage: 'Trial', count: 18, color: '#eb4d3d', percent: 12 },
-    { stage: 'Appeal', count: 8, color: '#9c27b0', percent: 5 },
-    { stage: 'Closed', count: 46, color: '#808080', percent: 32 }
-  ];
 
   const getPriorityColor = (p) => p === 3 ? '#eb4d3d' : p === 2 ? '#ff9500' : '#4772fa';
 
@@ -451,13 +387,15 @@ export default function DashboardPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
               <Calendar size={12} /> Next Hearing
             </div>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, margin: '0 0 6px 0' }}>Thompson vs. Global Corp</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, margin: '0 0 6px 0' }}>{user.name}</h3>
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginBottom: 16, margin: '0 0 16px 0' }}>Case #WP/2024/102-B • Final Arguments</p>
+            {/* advocate id  */}
+          <p className="text-sm font-semibold text-white/90 mb-4">
+  Advocate ID: <span className="text-white font-bold">{user._id}</span>
+</p>
+
             <div className="hero-info" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, color: 'rgba(255,255,255,0.9)', fontSize: 13, marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <MapPin size={14} />
-                <span>High Court, Room 302</span>
-              </div>
+               
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <CalendarDays size={14} />
                 <span>March 18, 2024 • 10:30 AM</span>
@@ -465,17 +403,17 @@ export default function DashboardPage() {
             </div>
             <div className="hero-buttons" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button onClick={() => setActiveView('case-summary')} style={{ backgroundColor: '#fff', color: accentColor, padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44 }}>
-                <Eye size={16} /> View Case
+                <Eye size={16} /> <Link to="/advocate/matters">View Case Summary</Link>
               </button>
               <button onClick={() => setActiveView('calendar')} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44 }}>
-                <Calendar size={16} /> Calendar
+                <Calendar size={16} /> <Link to="/advocate/calendar">View Calendar</Link>
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="stats-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 overflow-x-hidden">
+      {/* <div className="stats-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 overflow-x-hidden">
   {personalStats.map((item) => (
     <StatCard
       key={item.label}
@@ -483,7 +421,7 @@ export default function DashboardPage() {
       onClick={item.action}
     />
   ))}
-</div>
+</div> */}
 
 
      <div className="dashboard-grid grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 overflow-x-hidden">
@@ -697,7 +635,7 @@ export default function DashboardPage() {
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold"
           style={{ backgroundColor: accentColor, color: '#fff' }}
         >
-          <Plus size={18} /> Add Task
+          <Plus size={18} />  <Link to="/advocate/tasks" style={{ color: '#fff' }}>Add New Task</Link>
         </button>
 
         <button
@@ -705,7 +643,7 @@ export default function DashboardPage() {
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold"
           style={{ backgroundColor: colors.bgTertiary, color: colors.text }}
         >
-          <Upload size={18} /> Upload Document
+          <Upload size={18} /> <Link to="/advocate/documents"  >upload document</Link>
         </button>
 
         <button
@@ -713,7 +651,7 @@ export default function DashboardPage() {
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold"
           style={{ backgroundColor: colors.bgTertiary, color: colors.text }}
         >
-          <MessageSquare size={18} /> Send Message
+          <MessageSquare size={18} /> <Link to="/advocate/messages"  >Send Message</Link>
         </button>
       </div>
     </div>

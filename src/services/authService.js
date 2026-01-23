@@ -109,6 +109,17 @@ const authService = {
       console.log('Change password error:', error);
       throw error;
     }
+  },
+
+  // Delete account
+  deleteAccount: async () => {
+    try {
+      const response = await api.post('/api/auth/delete-account', {});
+      return response.data;
+    } catch (error) {
+      console.log('Delete account error:', error);
+      throw error;
+    }
   }
 };
 

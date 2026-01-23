@@ -45,26 +45,52 @@ export default function TasksPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    overdue: 0,
+    dueToday: 0
+  });
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 2,
+    priority: 'normal',
     dueDate: '',
     caseId: '',
     assignedTo: '',
-    checklist: []
+    type: 'other',
+    estimatedHours: '',
+    tags: []
   });
 
   useEffect(() => {
     fetchTasks();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await taskService.getTaskStats();
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching task stats:', error);
+      setStats({
+        total: 0,
+        completed: 0,
+        pending: 0,
+        overdue: 0,
+        dueToday: 0
+      });
+    }
+  };
 
   const fetchTasks = async () => {
     setLoading(true);
     try {
       const response = await taskService.getTasks();
-      const formattedTasks = response.data.map(task => ({
+      const formattedTasks = response?.data?.map(task => ({
         id: task.id,
         title: task.title,
         description: task.description || '',
@@ -76,18 +102,12 @@ export default function TasksPage() {
         assignedTo: task.assignedTo?.name || 'Unassigned',
         checklist: task.checklist || [],
         createdAt: task.createdAt
-      }));
+      })) || [];
       setTasks(formattedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       addNotification('error', 'Failed to load tasks');
-      setTasks([
-        { id: 1, title: 'Review counter-affidavit draft', description: 'Review and provide feedback on the draft', completed: false, priority: 3, dueDate: new Date().toISOString(), case: 'Thompson vs. Global', caseId: 1, assignedTo: 'Sarah Jenkins', checklist: [{ id: 1, text: 'Read draft', completed: true }, { id: 2, text: 'Add comments', completed: false }] },
-        { id: 2, title: 'Prepare evidence summary', description: 'Compile all evidence documents', completed: false, priority: 2, dueDate: new Date(Date.now() + 86400000).toISOString(), case: 'Miller vs. Tech', caseId: 2, assignedTo: 'David Chen', checklist: [] },
-        { id: 3, title: 'Client meeting preparation', description: 'Prepare agenda and documents', completed: true, priority: 2, dueDate: new Date(Date.now() - 86400000).toISOString(), case: 'Johnson Estate', caseId: 3, assignedTo: 'You', checklist: [{ id: 1, text: 'Create agenda', completed: true }, { id: 2, text: 'Print documents', completed: true }] },
-        { id: 4, title: 'File motion for extension', description: 'Draft and file motion', completed: false, priority: 1, dueDate: new Date(Date.now() + 172800000).toISOString(), case: 'Smith Litigation', caseId: 4, assignedTo: 'You', checklist: [] },
-        { id: 5, title: 'Research case law precedents', description: 'Find relevant precedents', completed: false, priority: 2, dueDate: new Date(Date.now() + 259200000).toISOString(), case: 'Thompson vs. Global', caseId: 1, assignedTo: 'Michael Brown', checklist: [] }
-      ]);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -96,7 +116,15 @@ export default function TasksPage() {
   const handleAddTask = async () => {
     try {
       const taskData = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        caseId: formData.caseId,
+        assignedTo: formData.assignedTo,
+        dueDate: formData.dueDate,
+        priority: formData.priority,
+        type: formData.type,
+        estimatedHours: formData.estimatedHours,
+        tags: formData.tags,
         status: 'pending'
       };
       await taskService.createTask(taskData);
@@ -140,7 +168,7 @@ export default function TasksPage() {
   const handleToggleComplete = async (task) => {
     try {
       const newStatus = task.completed ? 'pending' : 'completed';
-      await taskService.updateTask(task.id, { status: newStatus });
+      await taskService.updateTaskStatus(task.id, newStatus);
       setTasks(tasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
       addNotification('success', `Task marked as ${newStatus}`);
     } catch (error) {
@@ -230,13 +258,13 @@ export default function TasksPage() {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const stats = {
-    total: tasks.length,
-    completed: tasks.filter(t => t.completed).length,
-    pending: tasks.filter(t => !t.completed).length,
-    overdue: tasks.filter(t => !t.completed && new Date(t.dueDate) < new Date()).length,
-    dueToday: tasks.filter(t => !t.completed && formatDueDate(t.dueDate) === 'Today').length
-  };
+  // const taskStats = {
+  //   total: tasks.length,
+  //   completed: tasks.filter(t => t.completed).length,
+  //   pending: tasks.filter(t => !t.completed).length,
+  //   overdue: tasks.filter(t => !t.completed && new Date(t.dueDate) < new Date()).length,
+  //   dueToday: tasks.filter(t => !t.completed && formatDueDate(t.dueDate) === 'Today').length
+  // };
 
   const TaskModal = ({ isOpen, onClose, onSubmit, title, isEdit = false }) => {
     if (!isOpen) return null;
@@ -279,13 +307,44 @@ export default function TasksPage() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 8 }}>Priority</label>
                 <select
                   value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.inputBorder}`, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
                 >
-                  <option value={1}>Low</option>
-                  <option value={2}>Medium</option>
-                  <option value={3}>High</option>
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
                 </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 8 }}>Task Type</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.inputBorder}`, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
+                >
+                  <option value="research">Research</option>
+                  <option value="document_preparation">Document Preparation</option>
+                  <option value="filing">Filing</option>
+                  <option value="client_communication">Client Communication</option>
+                  <option value="court_appearance">Court Appearance</option>
+                  <option value="evidence_collection">Evidence Collection</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 8 }}>Estimated Hours</label>
+                <input
+                  type="number"
+                  value={formData.estimatedHours}
+                  onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
+                  placeholder="Enter estimated hours"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.inputBorder}`, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
+                />
               </div>
 
               <div>
@@ -297,6 +356,17 @@ export default function TasksPage() {
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.inputBorder}`, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
                 />
               </div>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: colors.text, marginBottom: 8 }}>Tags (comma-separated)</label>
+              <input
+                type="text"
+                value={formData.tags.join(', ')}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag) })}
+                placeholder="e.g., urgent, client-meeting, filing"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${colors.inputBorder}`, fontSize: 14, backgroundColor: colors.input, color: colors.text }}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
@@ -344,7 +414,7 @@ export default function TasksPage() {
               </div>
               <span style={{ fontSize: 12, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase' }}>Total Tasks</span>
             </div>
-            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats.total}</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats?.total || 0}</p>
           </div>
 
           <div style={{ backgroundColor: colors.card, padding: 16, borderRadius: 12, border: `1px solid ${colors.border}` }}>
@@ -354,7 +424,7 @@ export default function TasksPage() {
               </div>
               <span style={{ fontSize: 12, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase' }}>Completed</span>
             </div>
-            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats.completed}</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats?.completed || 0}</p>
           </div>
 
           <div style={{ backgroundColor: colors.card, padding: 16, borderRadius: 12, border: `1px solid ${colors.border}` }}>
@@ -364,7 +434,7 @@ export default function TasksPage() {
               </div>
               <span style={{ fontSize: 12, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase' }}>Pending</span>
             </div>
-            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats.pending}</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats?.pending || 0}</p>
           </div>
 
           <div style={{ backgroundColor: colors.card, padding: 16, borderRadius: 12, border: `1px solid ${colors.border}` }}>
@@ -374,7 +444,7 @@ export default function TasksPage() {
               </div>
               <span style={{ fontSize: 12, fontWeight: 600, color: colors.textSecondary, textTransform: 'uppercase' }}>Overdue</span>
             </div>
-            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats.overdue}</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: colors.text, margin: 0 }}>{stats?.overdue || 0}</p>
           </div>
         </div>
 

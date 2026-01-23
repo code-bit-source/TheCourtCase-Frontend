@@ -6,6 +6,7 @@ import Sidebar, { MobileSidebarDrawer, sidebarStyles } from './Sidebar';
 import Header, { headerStyles } from './Header';
 import Modal from './Modal';
 import Toast from './Toast';
+import { Settings } from 'lucide-react';
 
 export default function AdvocateHome() {
   const navigate = useNavigate();
@@ -20,7 +21,6 @@ export default function AdvocateHome() {
 
   const colors = getThemeColors(isDark, accentColor);
 
-  // Get current active view from location pathname
   const getActiveView = () => {
     const path = location.pathname.replace('/advocate/', '').split('/')[0];
     return path || 'dashboard';
@@ -28,11 +28,10 @@ export default function AdvocateHome() {
 
   const activeView = getActiveView();
 
-  // Get user info from AuthContext or use defaults
   const userInfo = {
-    name: user?.name || 'Alex Thompson',
-    email: user?.email || 'alex.thompson@email.com',
-    profilePic: user?.profilePicture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
+    name: user?.name || '',
+    email: user?.email || '',
+    profilePic: user?.profilePicture || ''
   };
 
   const clientNotifications = [
@@ -90,7 +89,10 @@ export default function AdvocateHome() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden', backgroundColor: colors.bg, color: colors.text }}>
+    <div
+      className="flex flex-col h-screen w-full overflow-hidden"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
       <style>{sidebarStyles}</style>
       <style>{headerStyles}</style>
       
@@ -104,7 +106,7 @@ export default function AdvocateHome() {
         userInfo={userInfo}
       />
 
-      <div style={{ display: 'flex',  flex: 1, overflow: 'hidden' }}>
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar
           activeView={activeView}
           setActiveView={handleViewChange}
@@ -116,10 +118,15 @@ export default function AdvocateHome() {
           isDark={isDark}
           accentColor={accentColor}
           userInfo={userInfo}
+          isMobileSidebarOpen={isMobileSidebarOpen}
+          setIsMobileSidebarOpen={setIsMobileSidebarOpen}
         />
 
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: colors.bg }}>
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 0 }}>
+        <main
+          className="flex flex-col flex-1 overflow-hidden"
+          style={{ backgroundColor: colors.bg }}
+        >
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-0">
             <Outlet context={{ isDark, accentColor, setIsDark, setAccentColor, addNotification }} />
           </div>
         </main>
@@ -138,6 +145,16 @@ export default function AdvocateHome() {
         userInfo={userInfo}
       />
 
+      {/* Floating Action Button */}
+      <div className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2">
+        <button
+          onClick={() => handleViewChange('settings')}
+          className="w-14 h-14 rounded-full text-white border-none cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-105"
+          style={{ backgroundColor: accentColor }}
+        >
+          <Settings size={24} />
+        </button>
+      </div>
 
       {/* <Toast
         notifications={notifications}

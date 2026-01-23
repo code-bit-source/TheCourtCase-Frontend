@@ -236,7 +236,7 @@ export default function MattersPage({ addNotification = () => { }, setActiveView
   }, [selectedMatter]);
 
   const [newNote, setNewNote] = useState('');
-  const fileInputRef = useRef(null);
+   
 
    
   const priorities = ['Low', 'Medium', 'High', 'Urgent'];
@@ -271,26 +271,7 @@ export default function MattersPage({ addNotification = () => { }, setActiveView
     }
   };
 
-  const handleFileUpload = async (e) => {
-    const files = e.target.files;
-    if (files && files.length > 0 && selectedMatter) {
-      const newDoc = {
-        id: Date.now(),
-        matterId: selectedMatter.id,
-        name: files[0].name,
-        type: files[0].type || 'pdf',
-        size: `${(files[0].size / 1024).toFixed(1)} KB`,
-        uploadedBy: 'You',
-        uploadDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        category: 'Uncategorized'
-      };
-
-      setMatterDocuments([newDoc, ...matterDocuments]);
-      addNotification('success', 'Document uploaded successfully');
-      setShowUploadModal(false);
-    }
-  };
-
+  
   const addNote = async () => {
     if (newNote.trim() && selectedMatter) {
       const note = {
@@ -456,6 +437,7 @@ export default function MattersPage({ addNotification = () => { }, setActiveView
 
       const data = await response.json();
       
+      // backend data has been updated, now update frontend state 
       const updatedCase = {
         ...selectedMatter,
         name: data.case.title,
@@ -527,10 +509,7 @@ export default function MattersPage({ addNotification = () => { }, setActiveView
     }
   };
 
-  const selectedMatterDocs = selectedMatter ? matterDocuments.filter((d) => d.matterId === selectedMatter.id) : [];
-  const selectedMatterTasks = selectedMatter ? matterTasks.filter((t) => t.matterId === selectedMatter.id) : [];
-  const selectedMatterNotes = selectedMatter ? matterNotes.filter((n) => n.matterId === selectedMatter.id) : [];
-  const selectedMatterActivities = selectedMatter ? matterActivities.filter((a) => a.matterId === selectedMatter.id) : [];
+  
 
   const openMattersCount = matters.filter((m) => m.status === 'Open').length;
 
@@ -1122,7 +1101,7 @@ export default function MattersPage({ addNotification = () => { }, setActiveView
 )}
 
 
-      {/* {selectedMatter && (
+      {selectedMatter && (
         <div style={{ width: 420, backgroundColor: colors.card, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{ flex: 1 }}>
@@ -1315,7 +1294,7 @@ export default function MattersPage({ addNotification = () => { }, setActiveView
             </button>
           </div>
         </div>
-      )} */}
+      )}
 
       {showEditMatterModal && selectedMatter && (
         <div onClick={() => setShowEditMatterModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150, backdropFilter: 'blur(4px)' }}>
